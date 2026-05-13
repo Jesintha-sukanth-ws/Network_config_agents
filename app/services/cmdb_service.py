@@ -1,16 +1,21 @@
-# Handles CMDB lookup logic using ServiceNow API
+
 import requests
 from config.settings import SERVICENOW_INSTANCE, USERNAME, PASSWORD
 
 
-def get_cmdb_data(ci_name: str):
+def get_cmdb_data(ci_sys_id: str):
+   
+    
     try:
-        #  STEP 1 — Fetch CI data from cmdb_ci_comm
-        url = f"https://dev183581.service-now.com/api/now/table/cmdb_ci_comm"
+        # =====================================================
+        # STEP 1: Fetch device metadata from CMDB
+        # =====================================================
+        url = f"{SERVICENOW_INSTANCE}/api/now/table/cmdb_ci_comm/{ci_sys_id}"
 
+        # Request only the 6 required metadata fields
+        # Note: fqdn is preferred over ip_address for management_host
         params = {
-            "name": ci_name,
-            "sysparm_fields": "name,model_number,ip_address,u_os_type,u_os_version,manufacturer"
+            "sysparm_fields": "name,model_number,ip_address,fqdn,u_os_type,u_os_version,manufacturer"
         }
 
         response = requests.get(
@@ -22,17 +27,21 @@ def get_cmdb_data(ci_name: str):
         response.raise_for_status()
         data = response.json()
 
-        if not data["result"]:
-            return {"error": "CI not found"}
+        device = data.get("result")
+        
+        if not device:
+            return {"error": "CI not found in CMDB"}
 
-        device = data["result"][0]
-
-        #  STEP 2 — Extract manufacturer sys_id
+        # =====================================================
+        # STEP 2: Extract manufacturer sys_id
+        # =====================================================
         manufacturer_sys_id = None
         if device.get("manufacturer"):
             manufacturer_sys_id = device["manufacturer"].get("value")
 
-        #  STEP 3 — Resolve vendor name
+        # =====================================================
+        # STEP 3: Resolve vendor name from manufacturer
+        # =====================================================
         vendor_name = "Unknown"
 
         if manufacturer_sys_id:
@@ -46,15 +55,24 @@ def get_cmdb_data(ci_name: str):
                 vendor_data = vendor_response.json()
                 vendor_name = vendor_data["result"].get("name", "Unknown")
 
-        #  STEP 4 — Build clean output
+       
+        
+        # Prefer FQDN over IP address for management_host
+        management_host = device.get("fqdn") or device.get("ip_address")
+        
+        if not management_host:
+            return {"error": "No management host (FQDN or IP) found in CMDB"}
+        
         return {
-            "name": device.get("name"),
-            "vendor": vendor_name,
-            "model": device.get("model_number"),
-            "ip": device.get("ip_address"),
-            "os_type": device.get("u_os_type"),
-            "os_version": device.get("u_os_version")
+            "device_name": device.get("name"),           # Human-readable identifier
+            "vendor": vendor_name,                       # Device vendor
+            "model": device.get("model_number"),         # Device model
+            "os_type": device.get("u_os_type"),          # OS family (IOS-XE, NX-OS, etc.)
+            "os_version": device.get("u_os_version"),    # OS version
+            "management_host": management_host           # Management endpoint (FQDN preferred, IP fallback)
         }
 
+    except requests.exceptions.RequestException as e:
+        return {"error": f"CMDB connection failed: {str(e)}"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"CMDB lookup failed: {str(e)}"}
