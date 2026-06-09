@@ -551,7 +551,23 @@ class CRLifecycleAgent:
                         "verification_plan": meta["verification_plan"],
                     }
                     execution_result = implement_change(prepared_context)
-                    
+
+                    # Persist before/after state for dashboard visualization
+                    # before_state = device state captured BEFORE config push (from prepare_change)
+                    # after_state  = actual_state from verification AFTER config push
+                    before_state = meta.get("device_state", {})
+                    after_state = {}
+                    for step_result in (execution_result.get("results", []) if isinstance(execution_result, dict) else []):
+                        verify_data = step_result.get("verify", {})
+                        if verify_data.get("actual_state"):
+                            after_state = verify_data["actual_state"]
+                            break
+
+                    meta["before_state"] = before_state
+                    meta["after_state"] = after_state
+                    meta["execution_results"] = execution_result.get("results", []) if isinstance(execution_result, dict) else []
+                    self._save_tracking()
+
                     is_success = False
                     close_notes_msg = ""
 

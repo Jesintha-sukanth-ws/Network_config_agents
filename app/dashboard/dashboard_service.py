@@ -116,7 +116,10 @@ class DashboardService:
                     "verification_plan": task_data.get("verification_plan", []),
                     "stage_history": task_data.get("stage_history", []),
                     "lifecycle_stage": task_data.get("lifecycle_stage"),
-                    "auto_close_ready": task_data.get("auto_close_ready", False)
+                    "auto_close_ready": task_data.get("auto_close_ready", False),
+                    "before_state": task_data.get("before_state", {}),
+                    "after_state": task_data.get("after_state", {}),
+                    "execution_results": task_data.get("execution_results", []),
                 }
         
         return None

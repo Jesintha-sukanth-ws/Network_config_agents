@@ -3,165 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Operations Dashboard</title>
+    <title>NetOps AI &mdash; Operations Dashboard</title>
     <link rel="stylesheet" href="/dashboard/static/dashboard.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-content">
-            <h1>🤖 Network AI Operations Dashboard</h1>
-            <div class="status-indicator">
-                <span id="live-status" class="status-dot online"></span>
-                <span>LIVE DEMO</span>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <div class="brand-icon">&#9881;</div>
+            <div class="brand-text">
+                <span class="brand-title">NetOps AI</span>
+                <span class="brand-subtitle">Operations Dashboard</span>
             </div>
         </div>
-    </header>
-
-    <!-- Main Dashboard -->
-    <div class="dashboard-container">
-        <!-- Top Row - Key Metrics -->
-        <div class="metrics-row">
-            <div class="metric-card">
-                <div class="metric-header">Active Task</div>
-                <div id="active-task-display" class="metric-content">
-                    <div class="no-active">No active tasks</div>
-                </div>
+        <div class="header-center">
+            <div class="stat-pill" id="hp-total">
+                <span class="pill-val" id="h-total">0</span>
+                <span class="pill-label">Total</span>
             </div>
-
-            <div class="metric-card">
-                <div class="metric-header">System Metrics</div>
-                <div id="system-metrics" class="metric-content">
-                    <div class="metric-item">
-                        <span class="metric-label">Total Tasks:</span>
-                        <span id="total-tasks">0</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">Success Rate:</span>
-                        <span id="success-rate">0%</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-label">In Progress:</span>
-                        <span id="in-progress">0</span>
-                    </div>
-                </div>
+            <div class="stat-pill success" id="hp-success">
+                <span class="pill-val" id="h-success">0</span>
+                <span class="pill-label">Success</span>
             </div>
-
-            <div class="metric-card">
-                <div class="metric-header">Network Health</div>
-                <div id="network-health" class="metric-content">
-                    <div class="device-status">
-                        <span class="status-dot online"></span>
-                        <span id="devices-online">Devices Online</span>
-                    </div>
-                    <div class="last-update">
-                        Last Update: <span id="last-update">Never</span>
-                    </div>
-                </div>
+            <div class="stat-pill warn" id="hp-active">
+                <span class="pill-val" id="h-active">0</span>
+                <span class="pill-label">Active</span>
+            </div>
+            <div class="stat-pill rate" id="hp-rate">
+                <span class="pill-val" id="h-rate">0%</span>
+                <span class="pill-label">Rate</span>
             </div>
         </div>
-
-        <!-- Main Content Row -->
-        <div class="main-row">
-            <!-- Left Panel - Automation Pipeline -->
-            <div class="pipeline-panel">
-                <div class="panel-header">
-                    <h3>🔄 Automation Pipeline</h3>
-                    <div class="refresh-btn" onclick="refreshPipeline()">↻</div>
-                </div>
-                <div id="pipeline-visualization" class="pipeline-content">
-                    <div class="pipeline-stage">
-                        <div class="stage-icon">📥</div>
-                        <div class="stage-info">
-                            <div class="stage-name">SCTASK Received</div>
-                            <div class="stage-status pending">Waiting...</div>
-                        </div>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-stage">
-                        <div class="stage-icon">📋</div>
-                        <div class="stage-info">
-                            <div class="stage-name">Change Request Created</div>
-                            <div class="stage-status pending">Waiting...</div>
-                        </div>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-stage">
-                        <div class="stage-icon">⚙️</div>
-                        <div class="stage-info">
-                            <div class="stage-name">Configuration Executing</div>
-                            <div class="stage-status pending">Waiting...</div>
-                        </div>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-stage">
-                        <div class="stage-icon">✅</div>
-                        <div class="stage-info">
-                            <div class="stage-name">Configuration Verified</div>
-                            <div class="stage-status pending">Waiting...</div>
-                        </div>
-                    </div>
-                    <div class="pipeline-connector"></div>
-                    <div class="pipeline-stage">
-                        <div class="stage-icon">🏁</div>
-                        <div class="stage-info">
-                            <div class="stage-name">Change Request Closed</div>
-                            <div class="stage-status pending">Waiting...</div>
-                        </div>
-                    </div>
-                </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
             </div>
-
-            <!-- Right Panel - Live Activity & Device Info -->
-            <div class="activity-panel">
-                <div class="panel-header">
-                    <h3>📡 Live Activity Feed</h3>
-                    <div class="activity-count">
-                        <span id="activity-count">0</span> events
-                    </div>
-                </div>
-                <div id="activity-feed" class="activity-content">
-                    <div class="no-activity">No recent activity</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Row - History and Details -->
-        <div class="bottom-row">
-            <!-- Task History -->
-            <div class="history-panel">
-                <div class="panel-header">
-                    <h3>📊 Task History</h3>
-                    <div id="history-count">0 tasks</div>
-                </div>
-                <div id="task-history" class="history-content">
-                    <div class="no-history">No completed tasks</div>
-                </div>
-            </div>
-
-            <!-- Execution Details -->
-            <div class="details-panel">
-                <div class="panel-header">
-                    <h3>🔍 Execution Details</h3>
-                    <div class="details-filter">
-                        <select id="task-selector" onchange="showTaskDetails()">
-                            <option value="">Select a task...</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="execution-details" class="details-content">
-                    <div class="no-selection">Select a task to view details</div>
-                </div>
-            </div>
+            <div class="last-refresh">Updated <span id="h-refresh">--:--</span></div>
         </div>
     </div>
+</header>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Loading dashboard data...</div>
-    </div>
+<!-- ===== MAIN LAYOUT ===== -->
+<div class="layout">
 
-    <script src="/dashboard/static/dashboard.js"></script>
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+
+        <!-- Active Task -->
+        <div class="card" id="card-active">
+            <div class="card-header">
+                <span class="card-icon">&#128203;</span>
+                <span class="card-title">Active Task</span>
+                <span class="card-badge pulse" id="active-badge">IDLE</span>
+            </div>
+            <div class="card-body" id="active-body">
+                <div class="empty-state">No active tasks</div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card flex-card">
+            <div class="card-header">
+                <span class="card-icon">&#128197;</span>
+                <span class="card-title">History</span>
+                <span class="card-count" id="hist-count">0</span>
+            </div>
+            <div class="card-body scroll-body" id="hist-body">
+                <div class="empty-state">No history yet</div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ===== CENTRE PANE ===== -->
+    <main class="centre">
+
+        <!-- Pipeline -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-icon">&#128257;</span>
+                <span class="card-title">Automation Pipeline</span>
+                <span class="card-sub" id="pipeline-task-label">&mdash;</span>
+            </div>
+            <div class="pipeline-track" id="pipeline-track">
+                <!-- injected by JS -->
+            </div>
+        </div>
+
+        <!-- Before / After State -->
+        <div class="card" id="card-diff">
+            <div class="card-header">
+                <span class="card-icon">&#9889;</span>
+                <span class="card-title">Configuration Change &mdash; Before &amp; After</span>
+                <div class="diff-task-select">
+                    <select id="diff-selector" onchange="loadDiff()">
+                        <option value="">Select task&hellip;</option>
+                    </select>
+                </div>
+            </div>
+            <div class="diff-body" id="diff-body">
+                <div class="diff-placeholder">
+                    <div class="diff-placeholder-icon">&#8644;</div>
+                    <div class="diff-placeholder-text">Select a task above to view the device state before &amp; after the configuration push.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-icon">&#128225;</span>
+                <span class="card-title">Live Activity Feed</span>
+                <span class="card-count" id="feed-count">0 events</span>
+            </div>
+            <div class="scroll-body feed-body" id="feed-body">
+                <div class="empty-state">No events yet</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===== RIGHT PANE ===== -->
+    <aside class="rightbar">
+
+        <!-- Execution Details -->
+        <div class="card flex-card">
+            <div class="card-header">
+                <span class="card-icon">&#128269;</span>
+                <span class="card-title">Execution Details</span>
+                <select id="detail-selector" onchange="loadDetails()" class="mini-select">
+                    <option value="">Pick task&hellip;</option>
+                </select>
+            </div>
+            <div class="card-body scroll-body" id="detail-body">
+                <div class="empty-state">Select a task to inspect</div>
+            </div>
+        </div>
+
+        <!-- Operations Breakdown -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-icon">&#128202;</span>
+                <span class="card-title">Operations Breakdown</span>
+            </div>
+            <div class="card-body" id="ops-body">
+                <div class="empty-state">Loading&hellip;</div>
+            </div>
+        </div>
+
+    </aside>
+
+</div>
+
+<!-- ===== BOOT LOADER ===== -->
+<div class="boot-loader" id="boot-loader">
+    <div class="boot-spinner"></div>
+    <div class="boot-text">Connecting to automation engine&hellip;</div>
+</div>
+
+<script src="/dashboard/static/dashboard.js"></script>
 </body>
 </html>

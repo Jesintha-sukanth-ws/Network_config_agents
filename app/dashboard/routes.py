@@ -28,7 +28,7 @@ async def dashboard_page():
     if not dashboard_html.exists():
         raise HTTPException(status_code=404, detail="Dashboard page not found")
     
-    return HTMLResponse(content=dashboard_html.read_text())
+    return HTMLResponse(content=dashboard_html.read_text(encoding='utf-8'))
 
 @dashboard_router.get("/static/{filename}")
 async def serve_static(filename: str):

@@ -244,6 +244,136 @@
       ],
       "auto_close_ready": false,
       "close_notes_payload": "Automated configuration push completed successfully."
+    },
+    "c6b97722831107d0b3df95d6feaad38c": {
+      "task_number": "SCTASK0010038",
+      "short_description": "Create a vlan with vlan id 34 and name as testing_ui",
+      "description": "THE team needs to test theior new ui so they are creating a new vlan ",
+      "change_sys_id": "ae9b7fa6831107d0b3df95d6feaad3a9",
+      "change_number": "CHG0030099",
+      "lifecycle_stage": "Closed",
+      "device_data": {
+        "device_name": "Catalyst9000_Sandbox",
+        "vendor": "Cisco",
+        "model": "C9300-48P",
+        "os_type": "IOS-XE",
+        "management_host": "devnetsandboxiosxec9k.cisco.com"
+      },
+      "policy": {
+        "schema_version": "1.0",
+        "vendor": "Cisco",
+        "os": "IOS-XE",
+        "model_family": "Catalyst9000",
+        "vlan_rules": {
+          "vlan_range": [
+            1,
+            4094
+          ],
+          "reserved_vlans": [
+            1,
+            1002,
+            1003,
+            1004,
+            1005
+          ],
+          "max_vlan_name_length": 32,
+          "vlan_name_regex": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "interface_rules": {
+          "max_interface_description": 240,
+          "allowed_modes": [
+            "access",
+            "trunk"
+          ],
+          "allowed_speeds": [
+            "10",
+            "100",
+            "1000",
+            "10000",
+            "40000",
+            "100000",
+            "auto"
+          ],
+          "allowed_duplex": [
+            "full",
+            "half",
+            "auto"
+          ],
+          "restricted_interfaces": [
+            "GigabitEthernet0/0",
+            "GigabitEthernet0/1"
+          ],
+          "interface_name_regex": "^(GigabitEthernet|Gi|TenGigabitEthernet|Te|TwentyFiveGigE|Twe|FortyGigabitEthernet|Fo|HundredGigE|Hu)\\d+/\\d+/\\d+$"
+        },
+        "trunk_rules": {
+          "invalid_native_vlans": [
+            0,
+            4095
+          ],
+          "allowed_vlan_range": [
+            1,
+            4094
+          ]
+        }
+      },
+      "execution_plan": [
+        {
+          "step": 1,
+          "intent_type": "create_vlan",
+          "parameters": {
+            "vlan_id": 34,
+            "name": "testing_ui"
+          },
+          "execute": true,
+          "reason": null
+        }
+      ],
+      "generated_payloads": [
+        {
+          "step": 1,
+          "intent_type": "create_vlan",
+          "parameters": {
+            "vlan_id": 34,
+            "name": "testing_ui"
+          },
+          "payload_data": {
+            "operation": "create_vlan",
+            "payload": {
+              "vlan_id": "34",
+              "vlan_name": "testing_ui"
+            }
+          }
+        }
+      ],
+      "verification_plan": [],
+      "stage_history": [
+        {
+          "timestamp": "2026-06-09T05:15:12.109141+00:00",
+          "stage": "SCTASK_RECEIVED",
+          "status": "success",
+          "message": "ServiceNow SCTASK ingested into the lifecycle workflow."
+        },
+        {
+          "timestamp": "2026-06-09T05:15:12.109156+00:00",
+          "stage": "CHANGE_REQUEST_CREATED",
+          "status": "success",
+          "message": "Change Request created and initialized in Assess phase."
+        },
+        {
+          "timestamp": "2026-06-09T05:35:56.861213+00:00",
+          "stage": "CONFIGURATION_EXECUTING",
+          "status": "success",
+          "message": "Approved implementation activities have started."
+        },
+        {
+          "timestamp": "2026-06-09T05:36:25.098798+00:00",
+          "stage": "CONFIGURATION_VERIFIED",
+          "status": "success",
+          "message": "Automated configuration execution completed and verification was recorded."
+        }
+      ],
+      "auto_close_ready": false,
+      "close_notes_payload": "Automated configuration push completed successfully."
     }
   }
 }
