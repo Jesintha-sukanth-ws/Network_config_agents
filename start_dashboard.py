@@ -58,18 +58,8 @@ def main():
         # Wait for server to be ready
         if check_server_ready():
             dashboard_url = "http://localhost:8000/dashboard/"
-            print(f"🌐 Dashboard URL: {dashboard_url}")
-            
-            # Ask user if they want to open browser automatically
-            try:
-                open_browser = input("\n🔗 Open dashboard in browser automatically? (y/N): ").lower().strip()
-                if open_browser in ['y', 'yes']:
-                    print("🌐 Opening dashboard in browser...")
-                    webbrowser.open(dashboard_url)
-                else:
-                    print(f"📋 Manual access: Open your browser and go to {dashboard_url}")
-            except KeyboardInterrupt:
-                print(f"\n📋 Manual access: Open your browser and go to {dashboard_url}")
+            print(f"🌐 Opening dashboard: {dashboard_url}")
+            webbrowser.open(dashboard_url)
             
             print("\n" + "="*60)
             print("🎯 DASHBOARD READY!")
