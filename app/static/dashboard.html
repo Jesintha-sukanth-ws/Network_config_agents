@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Operations Dashboard</title>
+    <link rel="stylesheet" href="/dashboard/static/dashboard.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <h1>🤖 Network AI Operations Dashboard</h1>
+            <div class="status-indicator">
+                <span id="live-status" class="status-dot online"></span>
+                <span>LIVE DEMO</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+        <!-- Top Row - Key Metrics -->
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-header">Active Task</div>
+                <div id="active-task-display" class="metric-content">
+                    <div class="no-active">No active tasks</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">System Metrics</div>
+                <div id="system-metrics" class="metric-content">
+                    <div class="metric-item">
+                        <span class="metric-label">Total Tasks:</span>
+                        <span id="total-tasks">0</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Success Rate:</span>
+                        <span id="success-rate">0%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">In Progress:</span>
+                        <span id="in-progress">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">Network Health</div>
+                <div id="network-health" class="metric-content">
+                    <div class="device-status">
+                        <span class="status-dot online"></span>
+                        <span id="devices-online">Devices Online</span>
+                    </div>
+                    <div class="last-update">
+                        Last Update: <span id="last-update">Never</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Row -->
+        <div class="main-row">
+            <!-- Left Panel - Automation Pipeline -->
+            <div class="pipeline-panel">
+                <div class="panel-header">
+                    <h3>🔄 Automation Pipeline</h3>
+                    <div class="refresh-btn" onclick="refreshPipeline()">↻</div>
+                </div>
+                <div id="pipeline-visualization" class="pipeline-content">
+                    <div class="pipeline-stage">
+                        <div class="stage-icon">📥</div>
+                        <div class="stage-info">
+                            <div class="stage-name">SCTASK Received</div>
+                            <div class="stage-status pending">Waiting...</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage">
+                        <div class="stage-icon">📋</div>
+                        <div class="stage-info">
+                            <div class="stage-name">Change Request Created</div>
+                            <div class="stage-status pending">Waiting...</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage">
+                        <div class="stage-icon">⚙️</div>
+                        <div class="stage-info">
+                            <div class="stage-name">Configuration Executing</div>
+                            <div class="stage-status pending">Waiting...</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage">
+                        <div class="stage-icon">✅</div>
+                        <div class="stage-info">
+                            <div class="stage-name">Configuration Verified</div>
+                            <div class="stage-status pending">Waiting...</div>
+                        </div>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage">
+                        <div class="stage-icon">🏁</div>
+                        <div class="stage-info">
+                            <div class="stage-name">Change Request Closed</div>
+                            <div class="stage-status pending">Waiting...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Live Activity & Device Info -->
+            <div class="activity-panel">
+                <div class="panel-header">
+                    <h3>📡 Live Activity Feed</h3>
+                    <div class="activity-count">
+                        <span id="activity-count">0</span> events
+                    </div>
+                </div>
+                <div id="activity-feed" class="activity-content">
+                    <div class="no-activity">No recent activity</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row - History and Details -->
+        <div class="bottom-row">
+            <!-- Task History -->
+            <div class="history-panel">
+                <div class="panel-header">
+                    <h3>📊 Task History</h3>
+                    <div id="history-count">0 tasks</div>
+                </div>
+                <div id="task-history" class="history-content">
+                    <div class="no-history">No completed tasks</div>
+                </div>
+            </div>
+
+            <!-- Execution Details -->
+            <div class="details-panel">
+                <div class="panel-header">
+                    <h3>🔍 Execution Details</h3>
+                    <div class="details-filter">
+                        <select id="task-selector" onchange="showTaskDetails()">
+                            <option value="">Select a task...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="execution-details" class="details-content">
+                    <div class="no-selection">Select a task to view details</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading dashboard data...</div>
+    </div>
+
+    <script src="/dashboard/static/dashboard.js"></script>
+</body>
+</html>

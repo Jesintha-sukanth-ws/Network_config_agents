@@ -1,62 +1,13 @@
-"""
-Schema Validation - Validates workflow structure
-against switch intent schema registry.
-"""
-
-from app.registry.switch_intent_schema_registry import (
-    SWITCH_INTENT_SCHEMAS
-)
+from app.registry.intent_registry import (CANONICAL_INTENT_SCHEMAS,get_canonical_intent)
 
 
 class SchemaValidator:
-    """
-    Registry-driven schema validator.
-
-    Responsibilities:
-    - Validate workflow structure
-    - Resolve aliases
-    - Validate supported intents
-    - Validate required parameters
-    - Reject unknown parameters
-    - Validate parameter datatypes
-
-    Does NOT perform:
-    - VLAN range validation
-    - Interface existence validation
-    - Device capability validation
-    - Workflow dependency validation
-    """
-
-    def validate_workflow(
-        self,
-        workflow_json
-    ):
-
+    def validate_workflow(self,workflow_json):
         errors = []
-
         normalized_workflow = []
-
-        # ==========================================
-        # Validate top-level workflow structure
-        # ==========================================
-
-        if not isinstance(workflow_json, dict):
-
-            return {
-                "safe": False,
-                "errors": [
-                    self._build_error(
-                        error_type="invalid_structure",
-                        message="Workflow payload must be a dictionary"
-                    )
-                ],
-                "workflow": []
-            }
-
         workflow = workflow_json.get("workflow")
 
-        if workflow is None:
-
+        if not workflow:
             return {
                 "safe": False,
                 "errors": [
@@ -68,30 +19,9 @@ class SchemaValidator:
                 "workflow": []
             }
 
-        if not isinstance(workflow, list):
-
-            return {
-                "safe": False,
-                "errors": [
-                    self._build_error(
-                        error_type="invalid_workflow_type",
-                        message="Workflow must be a list"
-                    )
-                ],
-                "workflow": []
-            }
-
-        # ==========================================
-        # Validate each workflow step
-        # ==========================================
-
         for index, step in enumerate(workflow):
 
             step_number = index + 1
-
-            # --------------------------------------
-            # Step must be dictionary
-            # --------------------------------------
 
             if not isinstance(step, dict):
 
@@ -105,20 +35,12 @@ class SchemaValidator:
 
                 continue
 
-            # --------------------------------------
-            # Extract fields
-            # --------------------------------------
-
             intent_type = step.get("intent_type")
 
             parameters = step.get(
                 "parameters",
                 {}
             )
-
-            # --------------------------------------
-            # intent_type required
-            # --------------------------------------
 
             if not intent_type:
 
@@ -131,20 +53,9 @@ class SchemaValidator:
                 )
 
                 continue
+            canonical = get_canonical_intent(intent_type)
 
-            # --------------------------------------
-            # Resolve aliases
-            # --------------------------------------
-
-            intent_type = self.resolve_alias(
-                intent_type
-            )
-
-            # --------------------------------------
-            # Validate supported intent
-            # --------------------------------------
-
-            if intent_type not in SWITCH_INTENT_SCHEMAS:
+            if not canonical:
 
                 errors.append(
                     self._build_error(
@@ -157,9 +68,7 @@ class SchemaValidator:
 
                 continue
 
-            # --------------------------------------
-            # Parameters must be dictionary
-            # --------------------------------------
+            intent_type = canonical
 
             if not isinstance(parameters, dict):
 
@@ -174,9 +83,7 @@ class SchemaValidator:
 
                 continue
 
-            schema = SWITCH_INTENT_SCHEMAS[
-                intent_type
-            ]
+            schema = CANONICAL_INTENT_SCHEMAS[intent_type]
 
             required_parameters = schema.get(
                 "required_parameters",
@@ -199,10 +106,6 @@ class SchemaValidator:
                 optional_parameters
             )
 
-            # --------------------------------------
-            # Validate required parameters
-            # --------------------------------------
-
             for required_param in required_parameters:
 
                 if required_param not in parameters:
@@ -220,10 +123,7 @@ class SchemaValidator:
                         )
                     )
 
-            # --------------------------------------
             # Reject unknown parameters
-            # --------------------------------------
-
             for param_name in parameters.keys():
 
                 if param_name not in allowed_parameters:
@@ -241,10 +141,7 @@ class SchemaValidator:
                         )
                     )
 
-            # --------------------------------------
             # Validate parameter datatypes
-            # --------------------------------------
-
             for param_name, param_value in parameters.items():
 
                 expected_type = parameter_types.get(
@@ -272,10 +169,6 @@ class SchemaValidator:
                             )
                         )
 
-            # --------------------------------------
-            # Add normalized workflow step
-            # --------------------------------------
-
             normalized_workflow.append({
 
                 "intent_type": intent_type,
@@ -283,10 +176,6 @@ class SchemaValidator:
                 "parameters": parameters
 
             })
-
-        # ==========================================
-        # Final Result
-        # ==========================================
 
         return {
 
@@ -296,36 +185,6 @@ class SchemaValidator:
 
             "workflow": normalized_workflow
         }
-
-    # ==================================================
-    # Alias Resolution
-    # ==================================================
-
-    def resolve_alias(
-        self,
-        intent_type
-    ):
-
-        # Direct match
-        if intent_type in SWITCH_INTENT_SCHEMAS:
-            return intent_type
-
-        # Alias lookup
-        for canonical_intent, schema in SWITCH_INTENT_SCHEMAS.items():
-
-            aliases = schema.get(
-                "aliases",
-                []
-            )
-
-            if intent_type in aliases:
-                return canonical_intent
-
-        return intent_type
-
-    # ==================================================
-    # Standard Error Format
-    # ==================================================
 
     def _build_error(
         self,

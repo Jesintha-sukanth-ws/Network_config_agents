@@ -1,0 +1,78 @@
+{
+    "schema_version":"1.0",
+
+    "vendor":"Cisco",
+
+    "os":"IOS-XE",
+
+    "model_family":"Catalyst9000",
+
+    "vlan_rules":{
+
+        "vlan_range":[
+            1,
+            4094
+        ],
+
+        "reserved_vlans":[
+            1,
+            1002,
+            1003,
+            1004,
+            1005
+        ],
+
+        "max_vlan_name_length":32,
+
+        "vlan_name_regex":
+        "^[a-zA-Z0-9_\\-]+$"
+    },
+
+    "interface_rules":{
+
+        "max_interface_description":240,
+
+        "allowed_modes":[
+            "access",
+            "trunk"
+        ],
+
+        "allowed_speeds":[
+            "10",
+            "100",
+            "1000",
+            "10000",
+            "40000",
+            "100000",
+            "auto"
+        ],
+
+        "allowed_duplex":[
+            "full",
+            "half",
+            "auto"
+        ],
+
+        "restricted_interfaces":[
+
+            "GigabitEthernet0/0",
+            "GigabitEthernet0/1"
+        ],
+
+        "interface_name_regex":
+        "^(GigabitEthernet|Gi|TenGigabitEthernet|Te|TwentyFiveGigE|Twe|FortyGigabitEthernet|Fo|HundredGigE|Hu)\\d+/\\d+/\\d+$"
+    },
+
+    "trunk_rules":{
+
+        "invalid_native_vlans":[
+            0,
+            4095
+        ],
+
+        "allowed_vlan_range":[
+            1,
+            4094
+        ]
+    }
+}

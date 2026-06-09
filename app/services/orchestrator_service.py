@@ -73,11 +73,31 @@ def plan_task(task: Dict[str, Any]) -> Dict[str, Any]:
     task_id = task.get("number", "unknown")
     orchestrator_logger.header(f"PLANNING TASK {task_id}")
     
-    description = (task.get("description") or task.get("short_description") or "").strip()
-    if not description:
-        raise ValueError("Task description missing")
+    # Combine both short_description and description for better context
+    short_desc = (task.get("short_description") or "").strip()
+    long_desc = (task.get("description") or "").strip()
+    
+    # Build comprehensive description for LLM processing
+    if short_desc and long_desc:
+        # Use both fields: short description as title, full description as details
+        combined_description = f"{short_desc}\n\nDetailed requirements:\n{long_desc}"
+    elif long_desc:
+        # Only detailed description available
+        combined_description = long_desc
+    elif short_desc:
+        # Only short description available
+        combined_description = short_desc
+    else:
+        raise ValueError("Task description missing - both short_description and description are empty")
 
-    orchestrator_logger.kv_block("[1/9] TASK DESCRIPTION", {"task_number": task_id, "description": description})
+    description = combined_description
+    
+    orchestrator_logger.kv_block("[1/9] TASK DESCRIPTION", {
+        "task_number": task_id, 
+        "short_description": short_desc,
+        "full_description": long_desc,
+        "combined_for_llm": description
+    })
 
     workflow = _intent_service.parse(description)
     orchestrator_logger.kv_block("[2/9] LLM-EXTRACTED INTENT WORKFLOW", workflow)

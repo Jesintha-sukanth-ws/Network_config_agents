@@ -1,0 +1,249 @@
+{
+  "tasks": {
+    "c5fe412a831d83d0b3df95d6feaad390": {
+      "task_number": "SCTASK0010036",
+      "short_description": "Create VLAN 351 named LOST_CODE_TEST",
+      "description": "Create VLAN 351 on the target network device.\r\n\r\nRequirements:\r\n1. Create VLAN 351.\r\n2. Configure the VLAN name as LOST_CODE_TEST\r\n3. Verify that VLAN 350 exists after implementation.\r\n4. Do not modify any existing VLANs.\r\n5. Do not modify any interface configurations.\r\n\r\nExpected Outcome:\r\nVLAN 351 is successfully created with the name LOST_CODE_TEST and post-change verification confirms that the VLAN exists on the device.",
+      "change_sys_id": "45215d6a831d83d0b3df95d6feaad377",
+      "change_number": "CHG0030097",
+      "lifecycle_stage": "Closed",
+      "device_data": {
+        "device_name": "Catalyst9000_Sandbox",
+        "vendor": "Cisco",
+        "model": "C9300-48P",
+        "os_type": "IOS-XE",
+        "management_host": "devnetsandboxiosxec9k.cisco.com"
+      },
+      "policy": {
+        "schema_version": "1.0",
+        "vendor": "Cisco",
+        "os": "IOS-XE",
+        "model_family": "Catalyst9000",
+        "vlan_rules": {
+          "vlan_range": [
+            1,
+            4094
+          ],
+          "reserved_vlans": [
+            1,
+            1002,
+            1003,
+            1004,
+            1005
+          ],
+          "max_vlan_name_length": 32,
+          "vlan_name_regex": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "interface_rules": {
+          "max_interface_description": 240,
+          "allowed_modes": [
+            "access",
+            "trunk"
+          ],
+          "allowed_speeds": [
+            "10",
+            "100",
+            "1000",
+            "10000",
+            "40000",
+            "100000",
+            "auto"
+          ],
+          "allowed_duplex": [
+            "full",
+            "half",
+            "auto"
+          ],
+          "restricted_interfaces": [
+            "GigabitEthernet0/0",
+            "GigabitEthernet0/1"
+          ],
+          "interface_name_regex": "^(GigabitEthernet|Gi|TenGigabitEthernet|Te|TwentyFiveGigE|Twe|FortyGigabitEthernet|Fo|HundredGigE|Hu)\\d+/\\d+/\\d+$"
+        },
+        "trunk_rules": {
+          "invalid_native_vlans": [
+            0,
+            4095
+          ],
+          "allowed_vlan_range": [
+            1,
+            4094
+          ]
+        }
+      },
+      "execution_plan": [
+        {
+          "step": 1,
+          "intent_type": "create_vlan",
+          "parameters": {
+            "vlan_id": 351,
+            "name": "LOST_CODE_TEST"
+          },
+          "execute": true,
+          "reason": null
+        }
+      ],
+      "generated_payloads": [
+        {
+          "step": 1,
+          "intent_type": "create_vlan",
+          "parameters": {
+            "vlan_id": 351,
+            "name": "LOST_CODE_TEST"
+          },
+          "payload_data": {
+            "operation": "create_vlan",
+            "payload": {
+              "vlan_id": "351",
+              "vlan_name": "LOST_CODE_TEST"
+            }
+          }
+        }
+      ],
+      "verification_plan": [],
+      "stage_history": [
+        {
+          "timestamp": "2026-06-08T17:04:15.019452+00:00",
+          "stage": "CONFIGURATION_EXECUTING",
+          "status": "success",
+          "message": "Approved implementation activities have started."
+        },
+        {
+          "timestamp": "2026-06-08T17:04:30.207043+00:00",
+          "stage": "CONFIGURATION_VERIFIED",
+          "status": "success",
+          "message": "Automated configuration execution completed and verification was recorded."
+        }
+      ],
+      "auto_close_ready": false,
+      "close_notes_payload": "Automated configuration push completed successfully."
+    },
+    "11ab9526835d83d0b3df95d6feaad3a1": {
+      "task_number": "SCTASK0010037",
+      "short_description": "delete the \"vlan_id\": 10,       \"name\": \"\" ",
+      "description": "the team using vlan with vlan id 10 has been moved to another campus so no longer the vlan is needed",
+      "change_sys_id": "a816692683dd83d0b3df95d6feaad3fb",
+      "change_number": "CHG0030098",
+      "lifecycle_stage": "Closed",
+      "device_data": {
+        "device_name": "Catalyst9000_Sandbox",
+        "vendor": "Cisco",
+        "model": "C9300-48P",
+        "os_type": "IOS-XE",
+        "management_host": "devnetsandboxiosxec9k.cisco.com"
+      },
+      "policy": {
+        "schema_version": "1.0",
+        "vendor": "Cisco",
+        "os": "IOS-XE",
+        "model_family": "Catalyst9000",
+        "vlan_rules": {
+          "vlan_range": [
+            1,
+            4094
+          ],
+          "reserved_vlans": [
+            1,
+            1002,
+            1003,
+            1004,
+            1005
+          ],
+          "max_vlan_name_length": 32,
+          "vlan_name_regex": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "interface_rules": {
+          "max_interface_description": 240,
+          "allowed_modes": [
+            "access",
+            "trunk"
+          ],
+          "allowed_speeds": [
+            "10",
+            "100",
+            "1000",
+            "10000",
+            "40000",
+            "100000",
+            "auto"
+          ],
+          "allowed_duplex": [
+            "full",
+            "half",
+            "auto"
+          ],
+          "restricted_interfaces": [
+            "GigabitEthernet0/0",
+            "GigabitEthernet0/1"
+          ],
+          "interface_name_regex": "^(GigabitEthernet|Gi|TenGigabitEthernet|Te|TwentyFiveGigE|Twe|FortyGigabitEthernet|Fo|HundredGigE|Hu)\\d+/\\d+/\\d+$"
+        },
+        "trunk_rules": {
+          "invalid_native_vlans": [
+            0,
+            4095
+          ],
+          "allowed_vlan_range": [
+            1,
+            4094
+          ]
+        }
+      },
+      "execution_plan": [
+        {
+          "step": 1,
+          "intent_type": "delete_vlan",
+          "parameters": {
+            "vlan_id": 10
+          },
+          "execute": true,
+          "reason": null
+        }
+      ],
+      "generated_payloads": [
+        {
+          "step": 1,
+          "intent_type": "delete_vlan",
+          "parameters": {
+            "vlan_id": 10
+          },
+          "payload_data": {
+            "operation": "delete_vlan",
+            "payload": {
+              "vlan_id": 10
+            }
+          }
+        }
+      ],
+      "verification_plan": [],
+      "stage_history": [
+        {
+          "timestamp": "2026-06-08T18:21:54.519798+00:00",
+          "stage": "SCTASK_RECEIVED",
+          "status": "success",
+          "message": "ServiceNow SCTASK ingested into the lifecycle workflow."
+        },
+        {
+          "timestamp": "2026-06-08T18:21:54.519817+00:00",
+          "stage": "CHANGE_REQUEST_CREATED",
+          "status": "success",
+          "message": "Change Request created and initialized in Assess phase."
+        },
+        {
+          "timestamp": "2026-06-08T18:23:00.922798+00:00",
+          "stage": "CONFIGURATION_EXECUTING",
+          "status": "success",
+          "message": "Approved implementation activities have started."
+        },
+        {
+          "timestamp": "2026-06-08T18:23:26.472646+00:00",
+          "stage": "CONFIGURATION_VERIFIED",
+          "status": "success",
+          "message": "Automated configuration execution completed and verification was recorded."
+        }
+      ],
+      "auto_close_ready": false,
+      "close_notes_payload": "Automated configuration push completed successfully."
+    }
+  }
+}

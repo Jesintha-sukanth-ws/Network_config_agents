@@ -1,232 +1,148 @@
-
-
 import re
+from typing import Dict, List
 
 
 class VlanValidator:
-
-    RESERVED_VLANS = [
-        1002,
-        1003,
-        1004,
-        1005
-    ]
-
-    VLAN_MIN = 1
-    VLAN_MAX = 4094
-
-    MAX_VLAN_NAME_LENGTH = 32
-
-    VLAN_NAME_PATTERN = r"^[a-zA-Z0-9_\-]+$"
-
-    def build_error(
-        self,
-        error_type: str,
-        step: int,
-        parameter: str,
-        message: str,
-        intent_type: str = None
-    ) -> dict:
-        """
-        Build a standardized error dictionary.
-        """
-        error = {
-            "error_type": error_type,
-            "step": step,
-            "parameter": parameter,
-            "message": message
+    def can_handle(self, intent_type: str) -> bool:
+        return intent_type in {
+            "create_vlan",
+            "delete_vlan"
         }
-        
-        if intent_type:
-            error["intent_type"] = intent_type
-            
-        return error
 
-    def validate_vlan_operation(
+    def validate(
         self,
-        intent_type,
-        parameters,
-        step_number
-    ):
+        intent_type: str,
+        params: Dict,
+        step: int,
+        policy: Dict
+    ) -> List[Dict]:
 
         errors = []
 
-        vlan_id = parameters.get(
-            "vlan_id"
-        )
+        # Extract the vlan_rules section — single source of truth.
+        # Fail loudly if policy is present but malformed so schema
+        # mismatches are never silently bypassed.
+        vlan_rules = (policy or {}).get("vlan_rules")
 
-        name = parameters.get(
-            "name"
-        )
+        if policy and vlan_rules is None:
+            errors.append({
+                "error_type": "policy_schema_error",
+                "step": step,
+                "field": "vlan_rules",
+                "message": (
+                    "Policy is present but missing required "
+                    "'vlan_rules' section — validation cannot proceed"
+                )
+            })
+            return errors
+
+        vlan_rules = vlan_rules or {}
+
+        vlan_id = params.get("vlan_id")
+        name = params.get("name")
+
+        # -----------------------------
+        # Type validation
+        # -----------------------------
 
         if vlan_id is not None:
 
-            errors.extend(
+            if not isinstance(vlan_id, int):
 
-                self.validate_vlan_id(
-                    vlan_id,
-                    intent_type,
-                    step_number
-                )
-            )
+                errors.append({
+                    "error_type": "invalid_vlan_type",
+                    "step": step,
+                    "field": "vlan_id",
+                    "message": "VLAN ID must be integer"
+                })
 
-        if name is not None:
+                return errors
 
-            errors.extend(
+        if vlan_id == 1 and intent_type == "delete_vlan":
 
-                self.validate_vlan_name(
-                    name,
-                    step_number
-                )
-            )
+            errors.append({
+                "error_type": "default_vlan_protection",
+                "step": step,
+                "field": "vlan_id",
+                "message": "Default VLAN 1 cannot be deleted"
+            })
 
-        return errors
+        vlan_range = vlan_rules.get("vlan_range")
 
-    def validate_vlan_id(
-        self,
-        vlan_id,
-        intent_type,
-        step_number
-    ):
+        if vlan_id is not None and vlan_range:
 
-        errors = []
+            min_vlan, max_vlan = vlan_range
 
-        if not isinstance(
-            vlan_id,
-            int
-        ):
+            if not (min_vlan <= vlan_id <= max_vlan):
 
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_vlan_type",
-                    step=step_number,
-                    intent_type=intent_type,
-                    parameter="vlan_id",
-                    message="vlan_id must be integer"
-                )
-            )
-
-            return errors
-
-        if vlan_id < self.VLAN_MIN:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_vlan_range",
-                    step=step_number,
-                    intent_type=intent_type,
-                    parameter="vlan_id",
-                    message="vlan_id below valid range"
-                )
-            )
-
-        if vlan_id > self.VLAN_MAX:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_vlan_range",
-                    step=step_number,
-                    intent_type=intent_type,
-                    parameter="vlan_id",
-                    message="vlan_id exceeds valid range"
-                )
-            )
-
-        if vlan_id in self.RESERVED_VLANS:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="reserved_vlan",
-                    step=step_number,
-                    intent_type=intent_type,
-                    parameter="vlan_id",
-                    message="reserved VLAN cannot be modified"
-                )
-            )
-
-        if vlan_id == 1:
-
-            if intent_type == "delete_vlan":
-
-                errors.append(
-
-                    self.build_error(
-                        error_type="default_vlan",
-                        step=step_number,
-                        intent_type=intent_type,
-                        parameter="vlan_id",
-                        message="default VLAN cannot be deleted"
+                errors.append({
+                    "error_type": "invalid_vlan_range",
+                    "step": step,
+                    "field": "vlan_id",
+                    "message": (
+                        f"VLAN ID {vlan_id} "
+                        f"outside allowed range "
+                        f"{min_vlan}-{max_vlan}"
                     )
-                )
+                })
 
-        return errors
+        reserved_vlans = vlan_rules.get(
+            "reserved_vlans",
+            []
+        )
 
-    def validate_vlan_name(
-        self,
-        name,
-        step_number
-    ):
-
-        errors = []
-
-        if not isinstance(
-            name,
-            str
+        if (
+            intent_type == "create_vlan"
+            and vlan_id in reserved_vlans
         ):
 
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_vlan_name_type",
-                    step=step_number,
-                    parameter="name",
-                    message="VLAN name must be string"
+            errors.append({
+                "error_type": "reserved_vlan",
+                "step": step,
+                "field": "vlan_id",
+                "message": (
+                    f"VLAN {vlan_id} "
+                    f"is reserved by policy"
                 )
+            })
+
+        if name:
+
+            max_length = vlan_rules.get(
+                "max_vlan_name_length"
             )
 
-            return errors
-
-        if not name.strip():
-
-            errors.append(
-
-                self.build_error(
-                    error_type="empty_vlan_name",
-                    step=step_number,
-                    parameter="name",
-                    message="VLAN name cannot be empty"
-                )
+            regex = vlan_rules.get(
+                "vlan_name_regex"
             )
 
-        if len(name) > self.MAX_VLAN_NAME_LENGTH:
+            if (
+                max_length
+                and len(name) > max_length
+            ):
 
-            errors.append(
+                errors.append({
+                    "error_type": "name_too_long",
+                    "step": step,
+                    "field": "name",
+                    "message": (
+                        f"VLAN name exceeds "
+                        f"{max_length} characters"
+                    )
+                })
 
-                self.build_error(
-                    error_type="vlan_name_too_long",
-                    step=step_number,
-                    parameter="name",
-                    message="VLAN name too long"
-                )
-            )
+            if (
+                regex
+                and not re.fullmatch(regex, name)
+            ):
 
-        if not re.match(
-            self.VLAN_NAME_PATTERN,
-            name
-        ):
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_vlan_name",
-                    step=step_number,
-                    parameter="name",
-                    message="invalid VLAN name characters"
-                )
-            )
+                errors.append({
+                    "error_type": "invalid_vlan_name",
+                    "step": step,
+                    "field": "name",
+                    "message": (
+                        "VLAN name violates policy"
+                    )
+                })
 
         return errors

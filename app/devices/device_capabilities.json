@@ -1,0 +1,66 @@
+{
+  "Cisco": {
+
+    "IOS-XE": {
+
+      "protocol": "restconf",
+
+      "preferred_connection": "restconf",
+
+      "supported_connections": [
+        "restconf",
+        "netconf",
+        "ssh"
+      ],
+
+      "default_port": 443,
+
+      "api_base_path": "/restconf/data",
+
+      "supports_yang": true,
+
+      "supports_rest": true,
+
+      "supports_cli_rpc": false,
+
+      "write_method": "restconf",
+
+      "yang_modules": {
+        "native":      "Cisco-IOS-XE-native",
+        "vlan":        "Cisco-IOS-XE-vlan",
+        "switchport":  "Cisco-IOS-XE-switch"
+      },
+
+      "switchport_config_container": "switchport-config",
+
+      "model_family_patterns": [
+        {
+          "pattern": "^C93.*",
+          "family": "Catalyst9000"
+        },
+        {
+          "pattern": "^C95.*",
+          "family": "Catalyst9000"
+        },
+        {
+          "pattern": "^C92.*",
+          "family": "Catalyst9000"
+        }
+      ],
+
+      "default_family": "Catalyst9000",
+
+      "state_endpoints": {
+        "device_info": "/restconf/data/Cisco-IOS-XE-native:native",
+        "vlans":       "/restconf/data/Cisco-IOS-XE-native:native/vlan",
+        "interfaces":  "/restconf/data/Cisco-IOS-XE-native:native/interface"
+      },
+
+      "write_endpoints": {
+        "vlan":      "/restconf/data/Cisco-IOS-XE-native:native/vlan",
+        "interface": "/restconf/data/Cisco-IOS-XE-native:native/interface"
+      }
+    }
+
+  }
+}

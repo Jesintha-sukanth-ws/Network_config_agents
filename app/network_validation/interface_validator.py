@@ -1,363 +1,235 @@
-"""
-Interface Validator
-"""
-
 import re
+from typing import Dict, List
+
+from app.network_validation.base_validator import BaseValidator
+from app.registry.intent_registry import get_intent_schema
 
 
-class InterfaceValidator:
+class InterfaceValidator(BaseValidator):
 
-    INTERFACE_PATTERNS = [
 
-        r"^Gi\d+/\d+/\d+$",
-
-        r"^Fa\d+/\d+$",
-
-        r"^Te\d+/\d+/\d+$",
-
-        r"^Eth\d+/\d+$"
-    ]
-
-    VALID_SPEEDS = [
-        10,
-        100,
-        1000,
-        "auto"
-    ]
-
-    VALID_DUPLEX = [
-        "auto",
-        "full",
-        "half"
-    ]
-
-    MAX_DESCRIPTION_LENGTH = 240
-
-    def build_error(
-        self,
-        error_type: str,
-        step: int,
-        parameter: str,
-        message: str,
-        intent_type: str = None
-    ) -> dict:
-        """
-        Build a standardized error dictionary.
-        """
-        error = {
-            "error_type": error_type,
-            "step": step,
-            "parameter": parameter,
-            "message": message
+    def can_handle(self, intent_type: str) -> bool:
+        return intent_type in {
+            "configure_access_port",
+            "configure_trunk_port",
+            "configure_interface_status",
         }
-        
-        if intent_type:
-            error["intent_type"] = intent_type
-            
-        return error
 
-    def validate_interface_operation(
+
+    def validate(
         self,
-        intent_type,
-        parameters,
-        step_number
-    ):
+        intent_type: str,
+        params: Dict,
+        step: int,
+        policy: Dict
+    ) -> List[Dict]:
 
-        errors = []
+        schema = get_intent_schema(intent_type)
 
-        interface = parameters.get(
-            "interface"
-        )
+        if not schema:
 
-        if interface is not None:
-
-            errors.extend(
-
-                self.validate_interface_name(
-                    interface,
-                    intent_type,
-                    step_number
+            return [
+                self.build_error(
+                    error_type="unknown_intent",
+                    message=f"Unsupported intent: {intent_type}",
+                    step=step,
+                    parameter="intent_type",
                 )
-            )
+            ]
 
-        if intent_type == "configure_allowed_vlans":
+        dispatch = {
 
-            errors.extend(
+            "configure_access_port":
+                self.validate_access,
 
-                self.validate_allowed_vlans(
-                    parameters,
-                    step_number
-                )
-            )
+            "configure_trunk_port":
+                self.validate_trunk,
 
-        elif intent_type == "set_native_vlan":
+            "configure_interface_status":
+                self.validate_status
+        }
 
-            errors.extend(
+        handler = dispatch.get(intent_type)
 
-                self.validate_native_vlan(
-                    parameters,
-                    step_number
-                )
-            )
+        return handler(
+            params,
+            step,
+            policy
+        ) if handler else []
 
-        elif (
 
-            intent_type
-            ==
-            "configure_interface_description"
-
-        ):
-
-            errors.extend(
-
-                self.validate_description(
-                    parameters,
-                    step_number
-                )
-            )
-
-        elif intent_type == "configure_speed":
-
-            errors.extend(
-
-                self.validate_speed(
-                    parameters,
-                    step_number
-                )
-            )
-
-        elif intent_type == "configure_duplex":
-
-            errors.extend(
-
-                self.validate_duplex(
-                    parameters,
-                    step_number
-                )
-            )
-
-        return errors
-
-    def validate_interface_name(
+    def validate_interface(
         self,
         interface,
-        intent_type,
-        step_number
+        description,
+        step,
+        policy
     ):
 
         errors = []
 
-        if not isinstance(
-            interface,
-            str
-        ):
+        if not interface:
 
             errors.append(
-
                 self.build_error(
-                    error_type="invalid_interface_type",
-                    step=step_number,
-                    intent_type=intent_type,
+                    error_type="missing_interface",
+                    message="Required",
+                    step=step,
                     parameter="interface",
-                    message="interface must be string"
                 )
             )
 
             return errors
 
-        valid = any(
 
-            re.match(
+        interface_rules = policy.get(
+            "interface_rules",
+            {}
+        )
+
+        pattern = interface_rules.get(
+            "interface_name_regex"
+        )
+
+
+        if pattern:
+
+            if not re.fullmatch(
                 pattern,
                 interface
-            )
-
-            for pattern
-            in self.INTERFACE_PATTERNS
-        )
-
-        if not valid:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_interface_format",
-                    step=step_number,
-                    intent_type=intent_type,
-                    parameter="interface",
-                    message="invalid Cisco interface format"
-                )
-            )
-
-        return errors
-
-    def validate_allowed_vlans(
-        self,
-        parameters,
-        step_number
-    ):
-
-        errors = []
-
-        allowed_vlans = parameters.get(
-            "allowed_vlans"
-        )
-
-        if not isinstance(
-            allowed_vlans,
-            list
-        ):
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_allowed_vlans",
-                    step=step_number,
-                    parameter="allowed_vlans",
-                    message="allowed_vlans must be list"
-                )
-            )
-
-            return errors
-
-        for vlan in allowed_vlans:
-
-            if not isinstance(
-                vlan,
-                int
             ):
 
                 errors.append(
-
                     self.build_error(
-                        error_type="invalid_allowed_vlan",
-                        step=step_number,
-                        parameter="allowed_vlans",
-                        message="allowed_vlans must contain integers"
+                        error_type="invalid_interface",
+                        message=f"Invalid interface format: {interface}",
+                        step=step,
+                        parameter="interface",
                     )
                 )
 
+
+        max_description = interface_rules.get(
+            "max_interface_description"
+        )
+
+
+        if (
+            description
+            and
+            max_description
+            and
+            len(description) > max_description
+        ):
+
+            errors.append(
+                self.build_error(
+                    error_type="description_too_long",
+                    message=f"Description exceeds {max_description} characters",
+                    step=step,
+                    parameter="description",
+                )
+            )
+
         return errors
 
-    def validate_native_vlan(
+
+    def validate_access(
         self,
-        parameters,
-        step_number
+        params,
+        step,
+        policy
+    ):
+
+        return self.validate_interface(
+            params.get("interface"),
+            params.get("description"),
+            step,
+            policy
+        )
+
+
+    def validate_trunk(
+        self,
+        params,
+        step,
+        policy
     ):
 
         errors = []
 
-        native_vlan = parameters.get(
+        errors.extend(
+            self.validate_interface(
+                params.get("interface"),
+                params.get("description"),
+                step,
+                policy
+            )
+        )
+
+        native_vlan = params.get(
             "native_vlan"
         )
 
-        if not isinstance(
-            native_vlan,
-            int
-        ):
+        invalid_native = (
+            policy.get(
+                "trunk_rules",
+                {}
+            ).get(
+                "invalid_native_vlans",
+                []
+            )
+        )
+
+        if native_vlan in invalid_native:
 
             errors.append(
-
                 self.build_error(
                     error_type="invalid_native_vlan",
-                    step=step_number,
+                    message=f"{native_vlan} cannot be used",
+                    step=step,
                     parameter="native_vlan",
-                    message="native_vlan must be integer"
                 )
             )
 
         return errors
 
-    def validate_description(
+
+    def validate_status(
         self,
-        parameters,
-        step_number
+        params,
+        step,
+        policy
     ):
 
         errors = []
 
-        description = parameters.get(
-            "description"
+        errors.extend(
+            self.validate_interface(
+                params.get("interface"),
+                None,
+                step,
+                policy
+            )
         )
 
-        if not isinstance(
-            description,
-            str
-        ):
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_description",
-                    step=step_number,
-                    parameter="description",
-                    message="description must be string"
-                )
-            )
-
-            return errors
-
-        if len(description) > self.MAX_DESCRIPTION_LENGTH:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="description_too_long",
-                    step=step_number,
-                    parameter="description",
-                    message="description too long"
-                )
-            )
-
-        return errors
-
-    def validate_speed(
-        self,
-        parameters,
-        step_number
-    ):
-
-        errors = []
-
-        speed = parameters.get(
-            "speed"
+        state = params.get(
+            "administrative_state"
         )
 
-        if speed not in self.VALID_SPEEDS:
+        state = state.upper() if state else None
+
+        if state not in {
+            "UP",
+            "DOWN"
+        }:
 
             errors.append(
-
                 self.build_error(
-                    error_type="invalid_speed",
-                    step=step_number,
-                    parameter="speed",
-                    message="invalid speed"
-                )
-            )
-
-        return errors
-
-    def validate_duplex(
-        self,
-        parameters,
-        step_number
-    ):
-
-        errors = []
-
-        duplex = parameters.get(
-            "duplex"
-        )
-
-        if duplex not in self.VALID_DUPLEX:
-
-            errors.append(
-
-                self.build_error(
-                    error_type="invalid_duplex",
-                    step=step_number,
-                    parameter="duplex",
-                    message="invalid duplex"
+                    error_type="invalid_state",
+                    message="Must be UP or DOWN",
+                    step=step,
+                    parameter="administrative_state",
                 )
             )
 

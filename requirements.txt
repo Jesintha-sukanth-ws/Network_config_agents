@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-requests
-ollama
-openai
-python-dotenv
-pydantic
