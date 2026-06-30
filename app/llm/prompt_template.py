@@ -25,7 +25,6 @@ The following responsibilities have already been completed by upstream services:
 - Intent extraction
 - Schema validation
 - Workflow validation
-- Policy validation
 - Device resolution
 - State validation
 
@@ -77,19 +76,22 @@ DOCUMENTATION USAGE
 
 The supplied documentation context is authoritative only for:
 
-- Canonical payload structure
+- Canonical payload structure shown in "Expected LLM Output" sections
 - Operation name
-- Required fields
-- Parameter hierarchy
+- Required and optional parameters
+- Parameter validation rules
 
-Ignore vendor-specific RESTCONF examples,
-NXAPI examples,
-YANG examples,
-and protocol-specific structures.
+⚠️  CRITICAL: Ignore vendor-specific implementation details in "SOP Notes".
 
-Generate payloads only from information supported by the documentation context.
+DO NOT generate RESTCONF structures, YANG structures, or CLI syntax from the "SOP Notes" section.
 
-Do not invent undocumented schema elements.
+The "Expected LLM Output" section in the documentation shows the ONLY valid payload format.
+
+⚠️  Use EXACTLY the structure and parameter names shown in "Expected LLM Output".
+
+Generate payloads only from information in the documentation context, using the "Expected LLM Output" structure as your template.
+
+Do not invent undocumented fields or alternative structures.
 
 PAYLOAD GENERATION
 
@@ -157,8 +159,7 @@ def build_payload_prompt(
     intent_type: str,
     parameters: Dict[str, Any],
     device: Dict[str, Any],
-    context: str,
-    sop_contract: Dict[str, Any] = None
+    context: str
 ) -> str:
 
     payload_format = device.get("capability")
@@ -178,22 +179,6 @@ def build_payload_prompt(
     simplified_format = f"Protocol: {protocol}, Method: {write_method}, YANG: {supports_yang}"
 
     context = (context or "")[:MAX_CONTEXT_CHARS]
-    
-    # Format SOP contract if provided
-    sop_contract_section = ""
-    if sop_contract:
-        sop_contract_section = f"""
-SOP PAYLOAD CONTRACT (REQUIRED OUTPUT FORMAT)
-
-You MUST return a payload matching this exact structure:
-
-{json.dumps(sop_contract, indent=2)}
-
-The documentation context shows vendor-specific details (YANG paths, CLI syntax, etc.).
-Use the documentation to populate the values, but the OUTPUT STRUCTURE must match the SOP contract above.
-
-CRITICAL: Do not invent alternative structures. Follow the SOP contract exactly.
-"""
 
     prompt = f"""
 TASK
@@ -214,7 +199,7 @@ Target Format: {simplified_format}
 VALIDATED PARAMETERS
 
 {json.dumps(parameters, indent=2, sort_keys=True)}
-{sop_contract_section}
+
 DOCUMENTATION CONTEXT
 
 {context}
@@ -236,9 +221,7 @@ Do not check for missing parameters.
 
 Do not modify parameter values.
 
-Use the SOP payload contract structure above for the output format.
-
-Use the documentation context to determine vendor-specific values and paths.
+Use the payload structure shown in the "Expected LLM Output" section of the documentation.
 
 Return only valid JSON.
 """

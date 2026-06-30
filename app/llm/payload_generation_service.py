@@ -69,13 +69,6 @@ class PayloadGenerationService:
                 },
             )
             
-            # Get SOP payload contract from registry
-            from app.registry.intent_registry import CANONICAL_INTENT_SCHEMAS
-            sop_contract = None
-            schema = CANONICAL_INTENT_SCHEMAS.get(intent_type)
-            if schema and "sop_payload_contract" in schema:
-                sop_contract = schema["sop_payload_contract"]
-
             prompt = (
 
                 build_payload_prompt(
@@ -90,10 +83,7 @@ class PayloadGenerationService:
                     device,
 
                     context=
-                    context,
-                    
-                    sop_contract=
-                    sop_contract
+                    context
                 )
             )
             logger.info("Built prompt (chars=%d)", len(prompt))
@@ -271,43 +261,13 @@ class PayloadGenerationService:
         intent_type: str
     ) -> None:
         """
-        Validate that the generated payload satisfies the SOP contract.
+        Validate that the generated payload has values for user-provided parameters.
         
-        Instead of checking if input parameter names match payload field names
-        (which can differ), we verify that:
-        1. All required SOP contract fields are present
-        2. The payload has values for all user-provided parameters
-        
-        This allows for parameter name transformations (e.g., "name" -> "vlan_name")
-        while ensuring no user data is lost.
+        This ensures that no user data was lost during payload generation,
+        allowing for parameter name transformations (e.g., "name" -> "vlan_name")
+        as long as the values are present somewhere in the payload.
         """
-        from app.registry.intent_registry import CANONICAL_INTENT_SCHEMAS
-        
-        schema = CANONICAL_INTENT_SCHEMAS.get(intent_type, {})
-        sop_contract = schema.get("sop_payload_contract", {})
-        
-        if not sop_contract:
-            # No SOP contract defined, skip validation
-            return
-        
-        # Validate that all SOP contract fields are present
-        missing_contract_fields = []
-        for contract_field in sop_contract.keys():
-            if contract_field not in generated_payload:
-                missing_contract_fields.append(contract_field)
-        
-        if missing_contract_fields:
-            error_msg = (
-                f"LLM generated incomplete payload. "
-                f"Missing SOP contract fields: {', '.join(missing_contract_fields)}. "
-                f"SOP contract: {sop_contract}. "
-                f"Generated payload: {generated_payload}"
-            )
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Additional check: ensure payload has at least as many non-empty values
-        # as were provided in input (catches cases where LLM drops data)
+        # Count non-empty values in input vs generated payload
         input_value_count = sum(1 for v in input_parameters.values() if v is not None and v != "")
         payload_value_count = sum(1 for v in generated_payload.values() if v is not None and v != "")
         
@@ -317,4 +277,3 @@ class PayloadGenerationService:
                 "Input: %s, Payload: %s",
                 payload_value_count, input_value_count, input_parameters, generated_payload
             )
-            # Don't fail here, just warn - the contract validation above is sufficient

@@ -13,30 +13,12 @@ class VlanValidator:
         self,
         intent_type: str,
         params: Dict,
-        step: int,
-        policy: Dict
+        step: int
     ) -> List[Dict]:
 
         errors = []
 
-        # Extract the vlan_rules section — single source of truth.
-        # Fail loudly if policy is present but malformed so schema
-        # mismatches are never silently bypassed.
-        vlan_rules = (policy or {}).get("vlan_rules")
-
-        if policy and vlan_rules is None:
-            errors.append({
-                "error_type": "policy_schema_error",
-                "step": step,
-                "field": "vlan_rules",
-                "message": (
-                    "Policy is present but missing required "
-                    "'vlan_rules' section — validation cannot proceed"
-                )
-            })
-            return errors
-
-        vlan_rules = vlan_rules or {}
+        vlan_rules = {}
 
         vlan_id = params.get("vlan_id")
         name = params.get("name")
@@ -102,7 +84,7 @@ class VlanValidator:
                 "field": "vlan_id",
                 "message": (
                     f"VLAN {vlan_id} "
-                    f"is reserved by policy"
+                    f"cannot be used"
                 )
             })
 
@@ -141,7 +123,7 @@ class VlanValidator:
                     "step": step,
                     "field": "name",
                     "message": (
-                        "VLAN name violates policy"
+                        "VLAN name format is invalid"
                     )
                 })
 

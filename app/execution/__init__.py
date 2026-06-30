@@ -1,35 +1,26 @@
 """
-Execution Module - Final Output and Logging
+Execution Module - Configuration Push and Status Verification
 
-This module handles the final dispatch of generated payloads,
-including output formatting, logging, audit trails, and result validation.
+This module handles configuration execution and status verification.
 
 Main Components:
-- PayloadDispatcher: Final output/logging layer
+- PushConfigExecutor: Configuration push execution
+- ExecutionStatusVerifier: Status verification and validation
 
 Usage:
-    from app.execution import PayloadDispatcher
+    from app.execution import PushConfigExecutor, ExecutionStatusVerifier
     
-    # Initialize dispatcher
-    dispatcher = PayloadDispatcher(output_directory="./output")
+    # Execute configuration
+    executor = PushConfigExecutor()
     
-    # Dispatch a payload
-    result = dispatcher.dispatch_payload(
-        payload={"config": {"vlan": {"id": 100}}},
-        payload_type="network",
-        target="switch-01"
-    )
-    
-    # Get dispatch statistics
-    stats = dispatcher.get_dispatch_stats()
+    # Verify execution status
+    verifier = ExecutionStatusVerifier()
 """
 
-from .payload_dispatcher import PayloadDispatcher
 from .push_config import PushConfigExecutor
 from .execution_status import ExecutionStatusVerifier
 
 __all__ = [
-    "PayloadDispatcher",
     "PushConfigExecutor",
     "ExecutionStatusVerifier",
 ]

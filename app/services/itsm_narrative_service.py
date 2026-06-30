@@ -62,11 +62,17 @@ class ITSMNarrativeService:
         return str_data
 
     def _clean_output(self, content: str) -> str:
-        """Removes markdown, code fences, and cleans up the generated text."""
+        """Removes markdown, code fences, IDs, and cleans up the generated text."""
         # Remove code fences
         content = re.sub(r"```[a-zA-Z]*", "", content)
         # Remove markdown headers
         content = re.sub(r"^#+\s.*", "", content, flags=re.MULTILINE)
+        # Strip any SCTASK / CHG / INC / RITM / PRB reference numbers the LLM may echo
+        content = re.sub(r"\b(SCTASK|CHG|INC|RITM|PRB|REQ|TASK)\d+\b", "", content, flags=re.IGNORECASE)
+        # Strip raw sys_id hex strings (32-char hex, optionally hyphenated)
+        content = re.sub(r"\b[0-9a-f]{32}\b", "", content, flags=re.IGNORECASE)
+        # Collapse any double spaces left by removals
+        content = re.sub(r"  +", " ", content)
         return content.strip()
 
     def _generate_narrative(self, narrative_type: NarrativeType, prompt_content: str) -> str:
@@ -116,10 +122,11 @@ class ITSMNarrativeService:
         """Generates work notes for SCTASKs."""
         sanitized_details = self._sanitize(technical_details)
         prompt = (
-            f"Generate an ITSM work note for Task {task_number}: {short_description}. "
+            f"Generate an ITSM work note for a task: {short_description}. "
             f"Context: {description}. "
             f"Outcome/Technical Details: {sanitized_details}. "
-            f"State: {narrative_type.value}."
+            f"State: {narrative_type.value}. "
+            f"Do not include any task numbers, change request numbers, or system IDs in the output."
         )
         return self._generate_narrative(narrative_type, prompt)
 
@@ -133,9 +140,10 @@ class ITSMNarrativeService:
         """Generates work notes for Change Requests."""
         sanitized_details = self._sanitize(technical_details)
         prompt = (
-            f"Generate an ITSM work note for Change Request {change_number}: {short_description}. "
+            f"Generate an ITSM work note for a change request: {short_description}. "
             f"Outcome/Technical Details: {sanitized_details}. "
-            f"State: {narrative_type.value}."
+            f"State: {narrative_type.value}. "
+            f"Do not include any task numbers, change request numbers, or system IDs in the output."
         )
         return self._generate_narrative(narrative_type, prompt)
 
@@ -149,7 +157,8 @@ class ITSMNarrativeService:
         """Generates close notes for Change Requests."""
         sanitized_summary = self._sanitize(execution_summary)
         prompt = (
-            f"Generate professional CR close notes for {change_number}: {short_description}. "
+            f"Generate professional close notes for a change request: {short_description}. "
             f"Execution Summary: {sanitized_summary}. "
-            f"Outcome: {narrative_type.value}."
+            f"Outcome: {narrative_type.value}. "
+            f"Do not include any task numbers, change request numbers, or system IDs in the output."
         )

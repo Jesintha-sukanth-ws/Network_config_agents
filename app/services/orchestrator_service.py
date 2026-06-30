@@ -5,8 +5,6 @@ import logging
 from typing import Dict, Any, List, cast
 
 from app.services.intent_service import IntentService
-from app.services.cmdb_service import CMDBService
-from app.services.policy_resolver import PolicyResolver
 
 from app.validation.schema_validator import SchemaValidator
 from app.network_validation.workflow_validator import WorkflowValidator
@@ -22,8 +20,9 @@ from app.rag.retrieval_service import RetrievalService
 from app.llm.ollama_client import OllamaClient
 from app.llm.payload_generation_service import PayloadGenerationService
 
-from app.execution.push_config import PushConfigExecutor
+
 from app.execution.execution_status import ExecutionStatusVerifier
+from app.execution.push_config import PushConfigExecutor
 from app.registry.intent_registry import CANONICAL_INTENT_SCHEMAS
 from app.services.display_service import display_terminal_output
 from app.utils.logger import orchestrator_logger
@@ -32,8 +31,6 @@ logger = logging.getLogger(__name__)
 
 # Singleton allocations
 _intent_service = IntentService()
-_cmdb_service = CMDBService()
-_policy_resolver = PolicyResolver()
 _schema_validator = SchemaValidator()
 _workflow_validator = WorkflowValidator()
 _state_validator = StateValidator()
@@ -112,20 +109,16 @@ def plan_task(task: Dict[str, Any]) -> Dict[str, Any]:
     if not schema_result.get("safe"):
         return {"safe": False, "status": "rejected", "message": "Schema validation failed", "errors": schema_result.get("errors", [])}
 
-    cmdb_ci_raw = task.get("cmdb_ci")
-    cmdb_id = cmdb_ci_raw.get("value") if isinstance(cmdb_ci_raw, dict) else cmdb_ci_raw
-    if not cmdb_id:
-        raise ValueError("CMDB CI missing")
-        
-    device = _cmdb_service.get_cmdb_data(cmdb_id)
-    device_data = device.model_dump() if hasattr(device, "model_dump") else device
+    device_data = task.get("device_data")
+    if not isinstance(device_data, dict):
+        raise ValueError(
+            "Device details missing. Please attach an Excel sheet with device fields (vendor, os_type, management_host, device_name, model_number)."
+        )
 
-    orchestrator_logger.kv_block("[4/9] CMDB LOOKUP", device_data)
-    policy = _policy_resolver.resolve(cast(Dict[str, Any], device_data))
-    orchestrator_logger.kv_block("[5/9] RESOLVED POLICY", policy)
+    orchestrator_logger.kv_block("[4/9] DEVICE DATA", device_data)
 
-    workflow_result = _workflow_validator.validate_workflow(workflow.get("workflow", []), policy)
-    orchestrator_logger.kv_block("[6/9] WORKFLOW VALIDATION", {"safe": workflow_result.get("safe"), "errors": workflow_result.get("errors", [])})
+    workflow_result = _workflow_validator.validate_workflow(workflow.get("workflow", []))
+    orchestrator_logger.kv_block("[5/9] WORKFLOW VALIDATION", {"safe": workflow_result.get("safe"), "errors": workflow_result.get("errors", [])})
 
     if not workflow_result.get("safe"):
         return {"safe": False, "status": "rejected", "message": "Workflow validation failed", "errors": workflow_result.get("errors", [])}
@@ -135,17 +128,30 @@ def plan_task(task: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "safe": True,
         "device_data": device_data,
-        "policy": policy,
         "ordered_workflow": raw_workflow,
         "raw_workflow": raw_workflow
     }
 
 def prepare_change(plan_context: Dict[str, Any], task_id: str = "unknown") -> Dict[str, Any]:
     device_data = plan_context["device_data"]
-    policy = plan_context["policy"]
     raw_workflow = plan_context.get("raw_workflow", plan_context["ordered_workflow"])
 
-    current_state = _get_device_service().get_device_state(device_data, state_type="all")
+    # Wrap device state retrieval — failures must return safe=False so
+    # the lifecycle agent can handle them gracefully instead of propagating
+    # an uncaught RuntimeError up through initialize_lifecycle to the poller.
+    try:
+        current_state = _get_device_service().get_device_state(device_data, state_type="all")
+    except Exception as exc:
+        error_msg = str(exc)
+        logger.error("Device state retrieval failed for task %s: %s", task_id, error_msg)
+        orchestrator_logger.kv_block("[7/10] LIVE DEVICE FACTS — FAILED", {"error": error_msg})
+        return {
+            "safe": False,
+            "terminal_failure": True,
+            "message": "Device state retrieval failed — cannot proceed without current device state.",
+            "error": error_msg,
+            "errors": [error_msg],
+        }
     orchestrator_logger.kv_block("[7/10] LIVE DEVICE FACTS", current_state)
 
     dependency_result = _dependency_planner.plan(raw_workflow, current_state)
@@ -174,7 +180,22 @@ def prepare_change(plan_context: Dict[str, Any], task_id: str = "unknown") -> Di
     })
 
     if not state_result.get("safe"):
-        return {"safe": False, "errors": state_result.get("errors", []), "message": "State verification failed pre-flight"}
+        # Extract detailed error message from errors array for work notes
+        error_details = []
+        for err in state_result.get("errors", []):
+            error_type = err.get("error_type", "unknown")
+            message = err.get("message", "Unknown error")
+            step = err.get("step", "?")
+            error_details.append(f"Step {step} ({error_type}): {message}")
+        
+        detailed_error = " | ".join(error_details) if error_details else "Validation failed"
+        
+        return {
+            "safe": False,
+            "errors": state_result.get("errors", []),
+            "message": "State verification failed pre-flight",
+            "error_detail": detailed_error  # Add this for narrative service
+        }
 
     # Idempotency evaluation: check if any steps need execution
     steps_to_execute = [step for step in execution_plan if step.get("execute", True)]
@@ -186,7 +207,6 @@ def prepare_change(plan_context: Dict[str, Any], task_id: str = "unknown") -> Di
             "idempotent": True,
             "task_number": task_id,
             "device_data": device_data,
-            "policy": policy,
             "device_state": current_state,
             "execution_plan": execution_plan,
             "generated_payloads": [],
@@ -233,7 +253,6 @@ def prepare_change(plan_context: Dict[str, Any], task_id: str = "unknown") -> Di
         "idempotent": False,
         "task_number": task_id,
         "device_data": device_data,
-        "policy": policy,
         "device_state": current_state,
         "execution_plan": execution_plan,
         "generated_payloads": generated_payloads,
@@ -243,7 +262,6 @@ def prepare_change(plan_context: Dict[str, Any], task_id: str = "unknown") -> Di
 def implement_change(prepared_context: Dict[str, Any]) -> Dict[str, Any]:
     task_id = prepared_context.get("task_number", "unknown")
     device_data = prepared_context["device_data"]
-    policy = prepared_context["policy"]
     current_state = prepared_context.get("device_state", {})
     execution_plan = prepared_context["execution_plan"]
     generated_payloads = prepared_context["generated_payloads"]
@@ -281,7 +299,6 @@ def implement_change(prepared_context: Dict[str, Any]) -> Dict[str, Any]:
     final_result = {
         "task_number": task_id,
         "device": device_data,
-        "policy": policy,
         "device_state": current_state,
         "results": results,
         "status": "partial_failure" if failed else "success"
@@ -300,7 +317,6 @@ def execute_plan(plan_context: Dict[str, Any], task_id: str = "unknown") -> Dict
         return {
             "task_number": task_id,
             "device": prepared["device_data"],
-            "policy": prepared["policy"],
             "device_state": prepared["device_state"],
             "results": [],
             "status": "idempotent",

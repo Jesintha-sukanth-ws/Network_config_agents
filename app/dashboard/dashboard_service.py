@@ -1,9 +1,4 @@
-"""
-Dashboard Service
 
-Provides read-only access to existing automation data for the Operations Dashboard.
-Uses only existing data sources - no new automation behavior introduced.
-"""
 
 import json
 import logging
@@ -19,6 +14,7 @@ class DashboardService:
     
     def __init__(self, tracking_file: str = "data/tracking/cr_tracking.json"):
         self.tracking_file = tracking_file
+        self.failed_tasks_file = "data/tracking/failed_tasks.json"  # Track failed tasks separately
     
     def _load_tracking_data(self) -> Dict[str, Any]:
         """Load existing tracking data - no modifications."""
@@ -34,6 +30,21 @@ class DashboardService:
         except Exception as e:
             logger.error("Failed to load tracking data: %s", e)
             return {"tasks": {}}
+    
+    def _load_failed_tasks(self) -> Dict[str, Any]:
+        """Load failed tasks that were rejected before CR creation."""
+        if not os.path.exists(self.failed_tasks_file):
+            return {"failed_tasks": {}}
+        
+        try:
+            if os.path.getsize(self.failed_tasks_file) == 0:
+                return {"failed_tasks": {}}
+            
+            with open(self.failed_tasks_file, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error("Failed to load failed tasks: %s", e)
+            return {"failed_tasks": {}}
     
     def get_active_task(self) -> Optional[Dict[str, Any]]:
         """Get currently active task from existing tracking data."""
@@ -69,11 +80,14 @@ class DashboardService:
         return active_task
     
     def get_task_history(self) -> List[Dict[str, Any]]:
-        """Get completed task history from existing tracking data."""
+        """Get completed task history from existing tracking data, including failed pre-CR tasks."""
         tracking_data = self._load_tracking_data()
+        failed_data = self._load_failed_tasks()
         tasks = tracking_data.get("tasks", {})
         
         history = []
+        
+        # Add successful/implemented tasks
         for task_id, task_data in tasks.items():
             stage_history = task_data.get("stage_history", [])
             start_time = stage_history[0].get("timestamp") if stage_history else None
@@ -89,7 +103,25 @@ class DashboardService:
                 "status": stage_history[-1].get("status") if stage_history else "unknown",
                 "started_at": start_time,
                 "completed_at": end_time,
-                "total_stages": len(stage_history)
+                "total_stages": len(stage_history),
+                "failure_reason": None
+            })
+        
+        # Add failed pre-CR tasks
+        failed_tasks = failed_data.get("failed_tasks", {})
+        for task_id, task_data in failed_tasks.items():
+            history.append({
+                "task_id": task_id,
+                "sctask": task_data.get("task_number"),
+                "cr": None,  # No CR was created
+                "short_description": task_data.get("short_description"),
+                "device": task_data.get("device_name"),
+                "lifecycle_stage": "failed_validation",
+                "status": "failed",
+                "started_at": task_data.get("attempted_at"),
+                "completed_at": task_data.get("failed_at"),
+                "total_stages": 0,
+                "failure_reason": task_data.get("failure_reason", "Validation failed")
             })
         
         # Sort by completion time, most recent first
@@ -110,7 +142,7 @@ class DashboardService:
                     "short_description": task_data.get("short_description"),
                     "description": task_data.get("description"),
                     "device_data": task_data.get("device_data", {}),
-                    "policy": task_data.get("policy", {}),
+
                     "execution_plan": task_data.get("execution_plan", []),
                     "generated_payloads": task_data.get("generated_payloads", []),
                     "verification_plan": task_data.get("verification_plan", []),
@@ -214,7 +246,9 @@ class DashboardService:
         
         pipeline_stages = [
             "SCTASK_RECEIVED",
-            "CHANGE_REQUEST_CREATED", 
+            "CHANGE_REQUEST_CREATED",
+            "CHANGE_REQUEST_AWAITING_APPROVAL",
+            "CHANGE_REQUEST_APPROVED",
             "CONFIGURATION_EXECUTING",
             "CONFIGURATION_VERIFIED",
             "CHANGE_REQUEST_CLOSED"

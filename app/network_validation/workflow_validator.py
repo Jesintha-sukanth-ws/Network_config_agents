@@ -9,9 +9,7 @@ class WorkflowValidator:
         self.validators = [VlanValidator(),InterfaceValidator()]
 
 
-    def validate_workflow(self,workflow: list,policy: dict = None) -> dict:
-        if policy is None:
-            policy = {}
+    def validate_workflow(self,workflow: list) -> dict:
         errors=[]
 
         for index,step in enumerate(workflow,start=1):
@@ -27,8 +25,7 @@ class WorkflowValidator:
                     errors.extend( validator.validate(
                             intent_type,
                             params,
-                            index,
-                            policy
+                            index
                         )
                     )
 

@@ -26,7 +26,7 @@ def check_server_ready(url="http://localhost:8000/dashboard/api/health", timeout
         except requests.exceptions.RequestException:
             pass
         
-        print("⏳ Server starting up... (this may take 30-60 seconds for ML models)")
+        print("⏳ Server starting up... (s)")
         time.sleep(5)
     
     print("❌ Server did not start within timeout period")

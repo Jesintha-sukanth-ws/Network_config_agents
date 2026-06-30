@@ -20,8 +20,7 @@ class InterfaceValidator(BaseValidator):
         self,
         intent_type: str,
         params: Dict,
-        step: int,
-        policy: Dict
+        step: int
     ) -> List[Dict]:
 
         schema = get_intent_schema(intent_type)
@@ -53,8 +52,7 @@ class InterfaceValidator(BaseValidator):
 
         return handler(
             params,
-            step,
-            policy
+            step
         ) if handler else []
 
 
@@ -62,8 +60,7 @@ class InterfaceValidator(BaseValidator):
         self,
         interface,
         description,
-        step,
-        policy
+        step
     ):
 
         errors = []
@@ -81,79 +78,26 @@ class InterfaceValidator(BaseValidator):
 
             return errors
 
-
-        interface_rules = policy.get(
-            "interface_rules",
-            {}
-        )
-
-        pattern = interface_rules.get(
-            "interface_name_regex"
-        )
-
-
-        if pattern:
-
-            if not re.fullmatch(
-                pattern,
-                interface
-            ):
-
-                errors.append(
-                    self.build_error(
-                        error_type="invalid_interface",
-                        message=f"Invalid interface format: {interface}",
-                        step=step,
-                        parameter="interface",
-                    )
-                )
-
-
-        max_description = interface_rules.get(
-            "max_interface_description"
-        )
-
-
-        if (
-            description
-            and
-            max_description
-            and
-            len(description) > max_description
-        ):
-
-            errors.append(
-                self.build_error(
-                    error_type="description_too_long",
-                    message=f"Description exceeds {max_description} characters",
-                    step=step,
-                    parameter="description",
-                )
-            )
-
         return errors
 
 
     def validate_access(
         self,
         params,
-        step,
-        policy
+        step
     ):
 
         return self.validate_interface(
             params.get("interface"),
             params.get("description"),
-            step,
-            policy
+            step
         )
 
 
     def validate_trunk(
         self,
         params,
-        step,
-        policy
+        step
     ):
 
         errors = []
@@ -162,35 +106,9 @@ class InterfaceValidator(BaseValidator):
             self.validate_interface(
                 params.get("interface"),
                 params.get("description"),
-                step,
-                policy
+                step
             )
         )
-
-        native_vlan = params.get(
-            "native_vlan"
-        )
-
-        invalid_native = (
-            policy.get(
-                "trunk_rules",
-                {}
-            ).get(
-                "invalid_native_vlans",
-                []
-            )
-        )
-
-        if native_vlan in invalid_native:
-
-            errors.append(
-                self.build_error(
-                    error_type="invalid_native_vlan",
-                    message=f"{native_vlan} cannot be used",
-                    step=step,
-                    parameter="native_vlan",
-                )
-            )
 
         return errors
 
@@ -198,8 +116,7 @@ class InterfaceValidator(BaseValidator):
     def validate_status(
         self,
         params,
-        step,
-        policy
+        step
     ):
 
         errors = []
@@ -208,8 +125,7 @@ class InterfaceValidator(BaseValidator):
             self.validate_interface(
                 params.get("interface"),
                 None,
-                step,
-                policy
+                step
             )
         )
 

@@ -28,7 +28,7 @@ CANONICAL_INTENT_SCHEMAS = {
         "requires": [],
         "provides": ["vlan_exists:{vlan_id}"],
         
-        # SOP payload contract - authoritative output structure
+
         "sop_payload_contract": {
             "vlan_id": "",
             "vlan_name": ""
@@ -71,7 +71,12 @@ CANONICAL_INTENT_SCHEMAS = {
 
         # Dependency metadata
         "requires": ["vlan_exists:{vlan_id}"],
-        "provides": ["vlan_deleted:{vlan_id}"]
+        "provides": ["vlan_deleted:{vlan_id}"],
+        
+        # SOP payload contract - authoritative output structure
+        "sop_payload_contract": {
+            "vlan_id": ""
+        }
     },
 
 
@@ -122,7 +127,13 @@ CANONICAL_INTENT_SCHEMAS = {
         "provides": [
             "interface_access_mode:{interface}",
             "interface_vlan_assigned:{interface}:{vlan_id}"
-        ]
+        ],
+        
+        
+        "sop_payload_contract": {
+            "interface": "",
+            "vlan_id": ""
+        }
     },
 
 
@@ -177,7 +188,14 @@ CANONICAL_INTENT_SCHEMAS = {
         "provides": [
             "interface_trunk_mode:{interface}",
             "interface_trunk_vlans:{interface}:{allowed_vlans}"
-        ]
+        ],
+        
+        # SOP payload contract - authoritative output structure
+        "sop_payload_contract": {
+            "interface": "",
+            "allowed_vlans": "",
+            "native_vlan": ""
+        }
     },
 
 

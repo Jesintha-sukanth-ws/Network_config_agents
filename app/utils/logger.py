@@ -29,21 +29,11 @@ logger = logging.getLogger("orchestrator")
 # -----------------------------------------------------------------------------
 
 def _create_stage_logger() -> logging.Logger:
-    
+    # Propagate to root so stage logs appear on the same stderr stream
+    # as uvicorn and the rest of the application.
     _stage_logger = logging.getLogger("stage")
-    
-    if not _stage_logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        
-        handler.setFormatter(formatter)
-        _stage_logger.addHandler(handler)
-        _stage_logger.setLevel(logging.INFO)
-        _stage_logger.propagate = False
-    
+    _stage_logger.setLevel(logging.INFO)
+    _stage_logger.propagate = True
     return _stage_logger
 
 
@@ -114,32 +104,23 @@ def log_stage_skipped(stage_name: str, reason: str) -> None:
 
 
 class OrchestrationLogger:
+    """
+    Writes all orchestration stage output through the standard Python logging
+    hierarchy so it appears on the same stream (stderr) as uvicorn and all
+    other application loggers.
+
+    The previous approach attached its own StreamHandler(stdout) with
+    propagate=False, which caused output to be silently dropped when running
+    under uvicorn because uvicorn captures/buffers stdout independently.
+    """
 
     def __init__(self):
-
-        if not logger.handlers:
-
-            handler = logging.StreamHandler(
-                sys.stdout
-            )
-
-            formatter = logging.Formatter(
-                "%(message)s"
-            )
-
-            handler.setFormatter(
-                formatter
-            )
-
-            logger.addHandler(
-                handler
-            )
-
-            logger.setLevel(
-                logging.INFO
-            )
-
-            logger.propagate = False
+        # Do NOT attach a private handler here.
+        # logging.basicConfig() in main.py already wires the root logger to
+        # stderr with the correct format.  We just ensure the "orchestrator"
+        # logger is at INFO level and lets records propagate to root.
+        logger.setLevel(logging.INFO)
+        logger.propagate = True
 
     # ---------------------------------------------------------
     # General Sections

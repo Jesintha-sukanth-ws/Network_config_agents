@@ -6,7 +6,7 @@ Consumes the orchestrator's final result shape:
     {
         "task_number":  str,
         "device":       dict,
-        "policy":       dict,
+
         "device_state": dict,   # current_state from DeviceStateService
         "results":      list[dict],
         "status":       str  # success | partial_failure | error | rejected
@@ -64,41 +64,12 @@ def _display_orchestration_result(result: dict) -> None:
         output.append(f"OS Type         : {device.get('os_type', 'N/A')}")
         output.append(f"Management Host : {device.get('management_host', 'N/A')}")
 
-    # ── Policy summary ──────────────────────────────────────────
-    policy = result.get("policy") or {}
-    if policy:
-        output.append("\nRESOLVED POLICY")
-        output.append("-" * 120)
-        output.append(f"Vendor          : {policy.get('vendor', 'N/A')}")
-        output.append(f"OS              : {policy.get('os', 'N/A')}")
-        output.append(f"Model Family    : {policy.get('model_family', 'N/A')}")
-        output.append(f"Schema Version  : {policy.get('schema_version', 'N/A')}")
-
-        vlan_rules = policy.get("vlan_rules", {})
-        vlan_range = vlan_rules.get("vlan_range")
-        if vlan_range:
-            output.append(f"VLAN Range      : {vlan_range[0]}-{vlan_range[1]}")
-
-        policy_reserved = set(vlan_rules.get("reserved_vlans", []))
-        if policy_reserved:
-            output.append(
-                f"Reserved VLANs  : {', '.join(str(v) for v in sorted(policy_reserved))}"
-            )
-
     # ── Device state: VLANs ─────────────────────────────────────
     device_state = result.get("device_state") or {}
     raw_vlans = device_state.get("_raw_vlans") or []
     raw_interfaces = device_state.get("_raw_interfaces") or []
 
     if raw_vlans:
-        policy_reserved = set(
-            (policy.get("vlan_rules") or {}).get("reserved_vlans", [])
-        )
-
-        # Classify VLANs using the device's own data as ground truth.
-        # A VLAN is treated as a system VLAN if the device itself reports it
-        # with a well-known system name (case-insensitive prefix match).
-        # This reflects what is actually on the device, not a hardcoded list.
         _SYSTEM_NAME_PREFIXES = (
             "default",
             "fddi",
@@ -123,7 +94,7 @@ def _display_orchestration_result(result: dict) -> None:
 
             if _is_system_vlan(vid, name):
                 system_vlans.append((vid, name))
-            elif vid in policy_reserved:
+            elif False:
                 reserved_vlans.append((vid, name))
             else:
                 user_vlans.append((vid, name))
@@ -140,20 +111,12 @@ def _display_orchestration_result(result: dict) -> None:
                 output.append(label)
 
         if reserved_vlans:
-            output.append("  Policy-Reserved VLANs (present on device):")
+            output.append("  Reserved VLANs (present on device):")
             for vid, name in reserved_vlans:
                 label = f"    VLAN {vid:<6}"
                 if name:
                     label += f"  {name}"
                 output.append(label)
-
-        # Show policy-reserved VLANs that are NOT yet on the device
-        device_vlan_ids = {v.get("vlan_id") for v in raw_vlans}
-        absent_reserved = sorted(policy_reserved - device_vlan_ids)
-        if absent_reserved:
-            output.append("  Policy-Reserved VLANs (not present on device):")
-            for vid in absent_reserved:
-                output.append(f"    VLAN {vid:<6}  (absent)")
 
         if user_vlans:
             output.append("  User VLANs:")

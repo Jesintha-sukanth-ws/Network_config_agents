@@ -1,33 +1,20 @@
 from __future__ import annotations
-
 import json
 import logging
 import time
 from typing import Any, Dict, List, Optional
-
 import requests
 import urllib3
-
 from app.devices.connection_service import ConnectionService
 from app.utils.version_utils import normalize_version
 from config.settings import DEVICE_TIMEOUT
-
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 logger = logging.getLogger(__name__)
-
-
-# Retry configuration for transient failures
 MAX_RETRIES = 3
 INITIAL_BACKOFF = 1.0  # seconds
 MAX_BACKOFF = 10.0  # seconds
 BACKOFF_MULTIPLIER = 2.0
-
-# HTTP status codes that should trigger retry
 RETRYABLE_STATUS_CODES = {502, 503, 504}
-
-# HTTP status codes that should NOT be retried
 NON_RETRYABLE_STATUS_CODES = {401, 403, 404}
 
 
@@ -36,23 +23,16 @@ _DEFAULT_RESULT = {
     "vlans":       [],
     "interfaces":  [],
 }
-
-
 class DeviceStateService:
-
-
     NORMALIZERS = {
         "device_info": "_normalize_device_info",
         "vlans":       "_normalize_vlans",
         "interfaces":  "_normalize_interfaces",
     }
-
     FETCH_HANDLERS = {
         "restconf":   "_fetch_restconf",
         "nxapi_rest": "_fetch_nxapi",
     }
-
-
     def __init__(self,connection_service: ConnectionService,) -> None:
         self._connection = connection_service
 

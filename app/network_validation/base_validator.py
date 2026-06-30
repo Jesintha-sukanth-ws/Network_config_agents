@@ -10,7 +10,6 @@ Contains:
 Does NOT contain:
 - VLAN rules
 - Interface rules
-- Policy values
 """
 
 from typing import Dict, Any, Optional

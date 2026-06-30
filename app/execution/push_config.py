@@ -2,7 +2,7 @@
 Push Config — pushes generated payloads to target devices via RESTCONF or NX-API.
 
 Responsibilities:
-- Accept validated payloads from PayloadDispatcher
+- Accept validated payloads
 - Establish device connection using connection_service
 - Push configuration based on operation type
 - Handle protocol-specific payload formatting
@@ -286,7 +286,6 @@ class PushConfigExecutor:
         config_payload: Dict,
         capability: Dict,
     ) -> Dict:
-        """Delete VLAN. YANG module names and endpoint from capability."""
 
         schema  = self._get_yang_schema(capability)
         vlan_id = int(config_payload.get("vlan_id") or config_payload.get("vlan-id"))
@@ -323,24 +322,13 @@ class PushConfigExecutor:
         config_payload: Dict,
         capability: Dict,
     ) -> Dict:
-        """Configure access port. All YANG details from capability.
-
-        IOS-XE requires two steps for interfaces with no existing switchport config:
-        1. Enable L2 switchport mode on the interface (switchport command)
-        2. Set mode=access and assign the access VLAN
-
-        Both steps use the same endpoint. Step 1 is a no-op if the interface
-        already has switchport config.
-        """
+        
 
         schema = self._get_yang_schema(capability)
 
+        # Extract interface and vlan_id from flat payload
         interface_name = config_payload.get("interface")
-        vlan_id = (
-            config_payload.get("vlan_id")
-            or config_payload.get("vlan-id")
-            or config_payload.get("access_vlan")
-        )
+        vlan_id = config_payload.get("vlan_id")
 
         if not interface_name:
             raise ValueError(f"Missing interface in payload: {config_payload}")
@@ -354,11 +342,6 @@ class PushConfigExecutor:
 
         sw = schema["switch_module"]
         sp = schema["sp_container"]
-
-        # Step 1: Enable L2 switchport on the interface.
-        # This is equivalent to the CLI "switchport" command with no arguments.
-        # It is a no-op if the interface already has switchport config.
-        # Without this, IOS-XE rejects switchport subcommands on routed ports.
         enable_payload = {
             f"{schema['native_module']}:{family}": {
                 "name": identifier,

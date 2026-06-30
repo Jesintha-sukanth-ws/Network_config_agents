@@ -70,12 +70,29 @@ class CRLifecycleAgent:
         )
 
     def _save_tracking(self) -> None:
-        """Saves active state transitions locally."""
+        """Saves active state transitions locally using an atomic write.
+
+        Uses a custom JSON default so Python sets (produced by
+        DeviceStateService._build_lookup_state for VLAN lookups) are
+        serialized as sorted lists instead of raising TypeError.
+        """
+        def _json_default(obj):
+            if isinstance(obj, set):
+                return sorted(obj)
+            raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+        tmp_path = self.tracking_file + ".tmp"
         try:
-            with open(self.tracking_file, "w") as f:
-                json.dump(self.tracking_data, f, indent=2)
+            with open(tmp_path, "w") as f:
+                json.dump(self.tracking_data, f, indent=2, default=_json_default)
+            os.replace(tmp_path, self.tracking_file)
         except Exception as e:
             logger.error("Failed to write cr_tracking.json cache file: %s", e)
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
 
     def _update_work_notes(self, table: str, sys_id: str, notes: str) -> bool:
         """Helper to programmatically patch work notes on the instance."""
@@ -160,19 +177,18 @@ class CRLifecycleAgent:
 
     def is_tracked(self, task_number: str) -> bool:
         """
-        Returns True if the SCTASK number is already
-        participating in an active lifecycle workflow.
+        Returns True if the SCTASK number is already participating in an
+        ACTIVE lifecycle workflow.
 
-        Prevents duplicate Change Request creation
-        when the poller encounters the same SCTASK.
+        Closed entries are excluded so that a genuinely re-opened or
+        re-submitted SCTASK can be picked up and processed again.
         """
-
         tasks = self.tracking_data.get("tasks", {})
-
         for metadata in tasks.values():
             if metadata.get("task_number") == task_number:
-                return True
-
+                # Only block re-ingestion for non-terminal stages
+                if metadata.get("lifecycle_stage") != "Closed":
+                    return True
         return False
 
     def _update_remote_state(self, change_sys_id: str, target_state: str) -> bool:
@@ -319,7 +335,7 @@ class CRLifecycleAgent:
                 "change_number": chg_number,
                 "lifecycle_stage": "Assess",
                 "device_data": prepared_ctx["device_data"],
-                "policy": prepared_ctx["policy"],
+
                 "execution_plan": prepared_ctx["execution_plan"],
                 "generated_payloads": prepared_ctx["generated_payloads"],
                 "verification_plan": prepared_ctx["verification_plan"],
@@ -350,21 +366,36 @@ class CRLifecycleAgent:
         """Poller call-site entry point to map incoming tasks."""
         from app.services.orchestrator_service import plan_task, prepare_change
         sctask_number = task.get("number", "Unknown")
-        
-        plan_res = plan_task(task)
+
+        try:
+            plan_res = plan_task(task)
+        except Exception as exc:
+            logger.error("plan_task raised unexpectedly for %s: %s", sctask_number, exc)
+            return {"status": "failed", "error": f"Planning exception: {exc}"}
+
         if not plan_res.get("safe", True):
             logger.error("Pre-validation checks failed for %s. Tracking skipped.", sctask_number)
             return {"status": "failed", "error": "Pre-validation failed"}
-        
-        prepared_ctx = prepare_change(plan_res, task_id=sctask_number)
+
+        try:
+            prepared_ctx = prepare_change(plan_res, task_id=sctask_number)
+        except Exception as exc:
+            logger.error("prepare_change raised unexpectedly for %s: %s", sctask_number, exc)
+            return {"status": "failed", "error": f"Preparation exception: {exc}"}
+
         if not prepared_ctx.get("safe", False):
-            logger.error("Preparation failed for %s. Tracking skipped.", sctask_number)
-            return {"status": "failed", "error": "Preparation failed"}
-        
+            error_msg = prepared_ctx.get("message", "Preparation failed")
+            is_terminal = prepared_ctx.get("terminal_failure", False)
+            logger.error(
+                "Preparation failed for %s (terminal=%s): %s",
+                sctask_number, is_terminal, error_msg,
+            )
+            return {"status": "failed", "error": error_msg, "terminal_failure": is_terminal}
+
         # Handle idempotent case - no implementation needed
         if prepared_ctx.get("idempotent", False):
             return self._handle_idempotent_task(task, prepared_ctx)
-            
+
         return self.create_change_request(task, prepared_ctx)
 
     def _handle_idempotent_task(self, task: Dict[str, Any], prepared_ctx: Dict[str, Any]) -> Dict[str, Any]:
@@ -545,7 +576,7 @@ class CRLifecycleAgent:
                     prepared_context = {
                         "task_number": change_number,
                         "device_data": meta["device_data"],
-                        "policy": meta["policy"],
+
                         "execution_plan": meta["execution_plan"],
                         "generated_payloads": meta["generated_payloads"],
                         "verification_plan": meta["verification_plan"],
@@ -658,6 +689,29 @@ class CRLifecycleAgent:
                             "Automated configuration execution completed and verification was recorded.",
                         )
                         
+                        # Update SCTASK state immediately after execution completes (success or partial failure)
+                        if is_success:
+                            # Execution succeeded - close SCTASK as complete
+                            if self._update_sc_task_state(sctask_sys_id, "3"):
+                                success_work_note = (
+                                    "Change request executed successfully.\n"
+                                    f"Technical Details: {tech_details}\n"
+                                    "Configuration implementation and verification completed."
+                                )
+                                self._update_work_notes("sc_task", sctask_sys_id, success_work_note)
+                                logger.info("SCTASK %s closed successfully", sctask_number)
+                        else:
+                            # Execution failed - close SCTASK as incomplete
+                            if self._update_sc_task_state(sctask_sys_id, "4"):
+                                failure_work_note = (
+                                    "Change request execution failed.\n"
+                                    f"Technical Details: {tech_details}\n"
+                                    "CR has been moved to Review state for manual intervention.\n"
+                                    "This task is being closed incomplete pending CR resolution."
+                                )
+                                self._update_work_notes("sc_task", sctask_sys_id, failure_work_note)
+                                logger.info("SCTASK %s closed incomplete due to execution failure", sctask_number)
+                        
                         # Phase 2 Terminal Work Notes Execution (SCTASK + CR Terminal Narratives)
                         if self.NarrativeType:
                             try:
@@ -735,6 +789,12 @@ class CRLifecycleAgent:
                             logger.info("Change Request %s successfully transitioned to: Closed", change_number)
                             meta["lifecycle_stage"] = "Closed"
                             meta["auto_close_ready"] = False
+                            self._append_stage_history(
+                                meta,
+                                "CHANGE_REQUEST_CLOSED",
+                                "success",
+                                "Change request closed successfully. Lifecycle complete.",
+                            )
 
                             if self._update_sc_task_state(sctask_sys_id, "3"):
                                 work_note = (
@@ -758,6 +818,28 @@ class CRLifecycleAgent:
                             self._save_tracking()
                         else:
                             logger.error("Failed to close %s from Review state: %s", change_number, close_response.text)
+
+                # -------------------------------------------------------------
+                # CR ALREADY CLOSED IN SERVICENOW (state=3) but local stage
+                # hasn't caught up — sync local state to Closed.
+                # This handles restarts, race conditions, or stuck Review entries.
+                # -------------------------------------------------------------
+                elif live_state == "3":
+                    if current_stage != "Closed":
+                        logger.info(
+                            "Change Request %s is already Closed in ServiceNow. "
+                            "Syncing local lifecycle_stage to Closed.",
+                            change_number,
+                        )
+                        meta["lifecycle_stage"] = "Closed"
+                        meta["auto_close_ready"] = False
+                        self._append_stage_history(
+                            meta,
+                            "CHANGE_REQUEST_CLOSED",
+                            "success",
+                            "Change request confirmed closed in ServiceNow. Local state synchronised.",
+                        )
+                        self._save_tracking()
 
             except Exception as e:
                 logger.error("Error during lifecycle loop reconciliation for %s: %s", change_number, e)

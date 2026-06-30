@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Network Automation Dashboard</title>
+    <style>
+        /* ─── ROOT ─── */
+        :root {
+            --bg: #0b0e14;
+            --surface: #131a24;
+            --surface2: #1c2635;
+            --border: #263040;
+            --border2: #2f3c50;
+            --text: #e8edf5;
+            --text2: #8ea4c4;
+            --text3: #5a6e8a;
+            --cyan: #4fc3f7;
+            --cyan-dim: rgba(79, 195, 247, 0.08);
+            --green: #66d9a0;
+            --green-dim: rgba(102, 217, 160, 0.08);
+            --amber: #f5b85b;
+            --amber-dim: rgba(245, 184, 91, 0.08);
+            --red: #f57a7a;
+            --red-dim: rgba(245, 122, 122, 0.08);
+            --purple: #b39ddb;
+            --purple-dim: rgba(179, 157, 219, 0.08);
+            --radius: 10px;
+            --radius-sm: 6px;
+            --font: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 4px;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            height: 54px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .header h1 {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .last-updated-label {
+            font-size: 10px;
+            color: var(--text3);
+        }
+
+        /* ─── BADGES ─── */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            padding: 3px 12px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .status-connecting {
+            background: var(--surface2);
+            color: var(--text3);
+            border: 1px solid var(--border);
+        }
+        .status-success {
+            background: var(--green-dim);
+            color: var(--green);
+            border: 1px solid rgba(102, 217, 160, 0.2);
+        }
+        .status-failed,
+        .status-error {
+            background: var(--red-dim);
+            color: var(--red);
+            border: 1px solid rgba(245, 122, 122, 0.2);
+        }
+        .status-pending {
+            background: var(--surface2);
+            color: var(--text3);
+            border: 1px solid var(--border);
+        }
+        .status-warning {
+            background: var(--amber-dim);
+            color: var(--amber);
+            border: 1px solid rgba(245, 184, 91, 0.2);
+        }
+        .status-info {
+            background: var(--cyan-dim);
+            color: var(--cyan);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            flex-shrink: 0;
+            animation: blink 2s ease-in-out infinite;
+        }
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.25;
+            }
+        }
+
+        /* ─── LAYOUT ─── */
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            padding: 18px 24px 24px;
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ─── PANEL ─── */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-height: 70px;
+        }
+
+        /* ─── TASK ─── */
+        .task-layer .panel {
+            padding: 16px;
+        }
+        .task-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .task-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .task-item label,
+        .task-description label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .task-item .value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            word-break: break-word;
+        }
+        .value.mono {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--cyan);
+        }
+        .task-description {
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .task-description label {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .description-text {
+            font-size: 12px;
+            color: var(--text2);
+            line-height: 1.6;
+        }
+
+        /* ─── FAILURE ─── */
+        .failure-block {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: var(--red-dim);
+            border: 1px solid rgba(245, 122, 122, 0.2);
+            border-radius: var(--radius-sm);
+        }
+        .failure-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--red);
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        .failure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        .failure-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .failure-item label {
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(245, 122, 122, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .failure-item .value {
+            font-size: 12px;
+            color: var(--red);
+            font-weight: 600;
+        }
+        .failure-reason {
+            grid-column: 1 / -1;
+        }
+
+        /* ─── DEVICES ─── */
+        .devices-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+        }
+        .device-card {
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            background: var(--surface2);
+            transition: border-color 0.2s;
+        }
+        .device-card:hover {
+            border-color: var(--cyan);
+        }
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .device-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text);
+        }
+        .device-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .device-detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .device-detail-label {
+            font-size: 9px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .device-detail-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+        }
+        .device-steps {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .step-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .step-badge.success {
+            background: var(--green-dim);
+            color: var(--green);
+            border: 1px solid rgba(102, 217, 160, 0.2);
+        }
+        .step-badge.failed,
+        .step-badge.error {
+            background: var(--red-dim);
+            color: var(--red);
+            border: 1px solid rgba(245, 122, 122, 0.2);
+        }
+        .step-badge.pending {
+            background: var(--surface);
+            color: var(--text3);
+            border: 1px solid var(--border);
+        }
+        .step-badge.skipped {
+            background: var(--amber-dim);
+            color: var(--amber);
+            border: 1px solid rgba(245, 184, 91, 0.2);
+        }
+
+        /* ─── MATRIX ─── */
+        .execution-matrix .panel {
+            padding: 14px;
+            overflow-x: auto;
+        }
+        .matrix-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .matrix-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .matrix-wrap th {
+            background: var(--surface2);
+            color: var(--text3);
+            padding: 8px 14px;
+            text-align: left;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border2);
+        }
+        .matrix-wrap td {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            color: var(--text2);
+            vertical-align: middle;
+        }
+        .matrix-wrap tbody tr:hover {
+            background: var(--surface2);
+        }
+        .cell-success {
+            color: var(--green);
+            font-weight: 700;
+            text-align: center;
+        }
+        .cell-failed,
+        .cell-error {
+            color: var(--red);
+            font-weight: 700;
+            text-align: center;
+        }
+        .cell-pending {
+            color: var(--text3);
+            text-align: center;
+        }
+        .cell-skipped {
+            color: var(--amber);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        /* ─── TIMELINE ─── */
+        .timeline .panel {
+            max-height: 340px;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .timeline-events {
+            display: flex;
+            flex-direction: column;
+        }
+        .timeline-event {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+        .timeline-event:last-child {
+            border-bottom: none;
+        }
+        .timeline-event:hover {
+            background: var(--surface2);
+        }
+        .timeline-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .timeline-dot.success {
+            background: var(--green);
+        }
+        .timeline-dot.error {
+            background: var(--red);
+        }
+        .timeline-dot.warning {
+            background: var(--amber);
+        }
+        .timeline-dot.info {
+            background: var(--cyan);
+        }
+        .timeline-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .timeline-meta {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 2px;
+        }
+        .timeline-ts {
+            font-size: 9px;
+            color: var(--text3);
+            font-weight: 600;
+        }
+        .timeline-task {
+            font-size: 9px;
+            color: var(--cyan);
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+        .timeline-stage {
+            font-size: 9px;
+            color: var(--text3);
+        }
+        .timeline-message {
+            font-size: 11px;
+            color: var(--text2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ─── METRICS ─── */
+        .metrics .panel {
+            padding: 14px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .metric-card {
+            border-radius: var(--radius-sm);
+            padding: 14px 12px;
+            text-align: center;
+            border: 1px solid var(--border2);
+        }
+        .metric-total {
+            background: linear-gradient(135deg, var(--cyan-dim), transparent);
+            border-color: rgba(79, 195, 247, 0.2);
+        }
+        .metric-success {
+            background: linear-gradient(135deg, var(--green-dim), transparent);
+            border-color: rgba(102, 217, 160, 0.2);
+        }
+        .metric-failed {
+            background: linear-gradient(135deg, var(--red-dim), transparent);
+            border-color: rgba(245, 122, 122, 0.2);
+        }
+
+        .metric-label {
+            font-size: 9px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        .metric-total .metric-value {
+            color: var(--cyan);
+        }
+        .metric-success .metric-value {
+            color: var(--green);
+        }
+        .metric-failed .metric-value {
+            color: var(--red);
+        }
+
+
+
+
+        /* ─── LOADING / EMPTY ─── */
+        .loading-state,
+        .empty-state {
+            text-align: center;
+            padding: 30px 16px;
+            color: var(--text3);
+            font-size: 12px;
+        }
+        .loading-state {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* ─── FOOTER ─── */
+        .footer {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 10px 24px;
+        }
+        .footer-content {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text3);
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 900px) {
+            .task-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .change-row {
+                grid-template-columns: 50px 100px 1fr;
+                gap: 8px;
+            }
+        }
+        @media (max-width: 600px) {
+            .header {
+                height: auto;
+                padding: 10px 16px;
+            }
+            .header-content {
+                flex-direction: column;
+                gap: 6px;
+                align-items: flex-start;
+            }
+            .main-content {
+                padding: 10px 12px 16px;
+            }
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .footer-content {
+                flex-direction: column;
+                gap: 4px;
+                text-align: center;
+            }
+            .change-row {
+                grid-template-columns: 1fr;
+                gap: 4px;
+                padding: 8px 12px;
+            }
+            .change-values {
+                flex-wrap: wrap;
+            }
+            .change-field {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-content">
+                <h1>⚙ Network Automation Dashboard</h1>
+                <div class="header-status">
+                    <span id="connection-status" class="status-badge status-connecting">
+                        <span class="live-dot"></span>Connecting...
+                    </span>
+                    <span id="last-updated" class="last-updated-label">Last updated: never</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+
+            <!-- ① ACTIVE TASK -->
+            <section class="section task-layer">
+                <h2 class="section-title">Active Task</h2>
+                <div id="task-panel" class="panel">
+                    <div id="task-loading" class="loading-state">Loading task information...</div>
+                    <div id="task-empty" class="empty-state" style="display:none;">
+                        <p>No active task</p>
+                    </div>
+                    <div id="task-content" style="display:none;">
+                        <div class="task-grid">
+                            <div class="task-item">
+                                <label>SCTASK</label>
+                                <div id="task-sctask" class="value mono">—</div>
+                            </div>
+                            <div class="task-item">
+                                <label>Change Request</label>
+                                <div id="task-cr" class="value mono">—</div>
+                            </div>
+                            <div class="task-item">
+                                <label>Status</label>
+                                <div id="task-status" class="value">—</div>
+                            </div>
+                        </div>
+                        <div class="task-description">
+                            <label>Description</label>
+                            <div id="task-description-text" class="description-text">—</div>
+                        </div>
+                        <div id="task-failure-block" class="failure-block" style="display:none;">
+                            <div class="failure-title">⚠ Failure Details</div>
+                            <div class="failure-grid">
+                                <div class="failure-item">
+                                    <label>Failed Step</label>
+                                    <div id="fail-step" class="value mono">—</div>
+                                </div>
+                                <div class="failure-item">
+                                    <label>Failed Device</label>
+                                    <div id="fail-device" class="value mono">—</div>
+                                </div>
+                                <div class="failure-item failure-reason">
+                                    <label>Reason</label>
+                                    <div id="fail-reason" class="value">—</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ② DEVICES -->
+            <section class="section device-layer">
+                <h2 class="section-title">Devices in Execution</h2>
+                <div id="devices-panel" class="panel">
+                    <div id="devices-loading" class="loading-state">Loading devices...</div>
+                    <div id="devices-empty" class="empty-state" style="display:none;">
+                        <p>No devices in execution</p>
+                    </div>
+                    <div id="devices-content" style="display:none;">
+                        <div id="devices-list" class="devices-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ③ EXECUTION MATRIX -->
+            <section class="section execution-matrix">
+                <h2 class="section-title">Execution Matrix — Steps × Devices</h2>
+                <div id="matrix-panel" class="panel">
+                    <div id="matrix-loading" class="loading-state">Loading execution matrix...</div>
+                    <div id="matrix-empty" class="empty-state" style="display:none;">
+                        <p>No execution data available</p>
+                    </div>
+                    <div id="matrix-content" style="display:none;">
+                        <div id="execution-matrix" class="matrix-wrap"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ④ TIMELINE -->
+            <section class="section timeline">
+                <h2 class="section-title">Event Timeline</h2>
+                <div id="timeline-panel" class="panel">
+                    <div id="timeline-loading" class="loading-state">Loading timeline...</div>
+                    <div id="timeline-empty" class="empty-state" style="display:none;">
+                        <p>No events available</p>
+                    </div>
+                    <div id="timeline-content" style="display:none;">
+                        <div id="timeline-events" class="timeline-events"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ⑤ METRICS -->
+            <section class="section metrics">
+                <h2 class="section-title">Execution Metrics</h2>
+                <div id="metrics-panel" class="panel">
+                    <div id="metrics-loading" class="loading-state">Loading metrics...</div>
+                    <div id="metrics-content" style="display:none;">
+                        <div class="metrics-grid">
+                            <div class="metric-card metric-total">
+                                <div class="metric-label">Total Tasks</div>
+                                <div id="metric-total" class="metric-value">—</div>
+                            </div>
+                            <div class="metric-card metric-success">
+                                <div class="metric-label">Successful</div>
+                                <div id="metric-successful" class="metric-value">—</div>
+                            </div>
+                            <div class="metric-card metric-failed">
+                                <div class="metric-label">Failed</div>
+                                <div id="metric-failed" class="metric-value">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <span>Network Automation Dashboard</span>
+                <span>Backend = Source of Truth · Frontend = Renderer Only</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * Network Automation Dashboard — Pure API Renderer
+         * No hardcoded data. All values sourced from backend API.
+         */
+        class Dashboard {
+            constructor() {
+                this.API = '/dashboard/api';
+                this.REFRESH_MS = 5000;
+                this._active = null;
+                this._details = null;
+                this._timeline = null;
+                this._metrics = null;
+                this._devices = [];
+                this._init();
+            }
+
+            _init() {
+                this._loadAll();
+                setInterval(() => this._loadAll(), this.REFRESH_MS);
+            }
+
+            async _loadAll() {
+                try {
+                    await Promise.all([
+                        this._loadActiveTask(),
+                        this._loadTimeline(),
+                        this._loadMetrics(),
+                    ]);
+                    this._setConnected(true);
+                } catch (err) {
+                    console.error('[Dashboard] load error:', err);
+                    this._setConnected(false);
+                }
+            }
+
+            _setConnected(ok) {
+                const badge = document.getElementById('connection-status');
+                if (ok) {
+                    badge.innerHTML = '<span class="live-dot"></span>Connected';
+                    badge.className = 'status-badge status-success';
+                    document.getElementById('last-updated').textContent =
+                        'Last updated: ' + new Date().toLocaleTimeString();
+                } else {
+                    badge.innerHTML = 'Disconnected';
+                    badge.className = 'status-badge status-error';
+                }
+            }
+
+            async _loadActiveTask() {
+                try {
+                    const res = await fetch(`${this.API}/active`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    this._active = data.active;
+
+                    if (data.has_active && data.active) {
+                        this._renderTaskPanel();
+                        await this._loadTaskDetails(data.active.sctask);
+                    } else {
+                        this._showEmpty('task');
+                        this._showEmpty('devices');
+                        this._showEmpty('matrix');
+                        this._showEmpty('state');
+                    }
+                } catch (err) {
+                    console.error('[Dashboard] _loadActiveTask failed:', err);
+                    this._showEmpty('task');
+                    this._showEmpty('devices');
+                    this._showEmpty('matrix');
+                    this._showEmpty('state');
+                }
+            }
+
+            async _loadTaskDetails(sctask) {
+                try {
+                    const res = await fetch(`${this.API}/history/${encodeURIComponent(sctask)}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    this._details = await res.json();
+                    this._devices = this._extractDevices(this._details);
+                    this._renderDeviceSection();
+                    this._renderExecutionMatrix();
+                } catch (err) {
+                    console.error('[Dashboard] _loadTaskDetails failed:', err);
+                }
+            }
+
+            _renderTaskPanel() {
+                const task = this._active;
+                if (!task) return;
+                this._show('task');
+                this._setText('task-sctask', task.sctask || '—');
+                this._setText('task-cr', task.cr || '—');
+                this._setText('task-description-text', task.short_description || '—');
+                
+                // Determine task status: SUCCESS only if task completed successfully, not individual steps
+                const stageHistory = this._details?.stage_history || [];
+                const isClosed = stageHistory.some(e => e.stage === 'CHANGE_REQUEST_CLOSED' || e.stage === 'closed');
+                const taskStatus = isClosed ? (stageHistory[stageHistory.length - 1]?.status || 'unknown') : (task.status || 'in_progress');
+                
+                const statusEl = document.getElementById('task-status');
+                statusEl.textContent = taskStatus?.toUpperCase() || '—';
+                statusEl.className = `value status-badge status-${this._statusClass(taskStatus)}`;
+            }
+
+            _renderDeviceSection() {
+                if (!this._devices || this._devices.length === 0) {
+                    this._showEmpty('devices');
+                    return;
+                }
+                this._show('devices');
+                const list = document.getElementById('devices-list');
+                list.innerHTML = this._devices.map(device => `
+                    <div class="device-card">
+                        <div class="device-header">
+                            <div class="device-name">${device.name}</div>
+                        </div>
+                        <div class="device-details">
+                            <div class="device-detail-item">
+                                <div class="device-detail-label">Vendor</div>
+                                <div class="device-detail-value">${device.vendor}</div>
+                            </div>
+                            <div class="device-detail-item">
+                                <div class="device-detail-label">OS</div>
+                                <div class="device-detail-value">${device.os}</div>
+                            </div>
+                            <div class="device-detail-item">
+                                <div class="device-detail-label">Host</div>
+                                <div class="device-detail-value">${device.host}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            _renderExecutionMatrix() {
+                if (!this._details?.execution_results || this._details.execution_results.length === 0) {
+                    this._showEmpty('matrix');
+                    return;
+                }
+                this._show('matrix');
+                const matrix = document.getElementById('execution-matrix');
+                const results = this._details.execution_results || [];
+                let html = '<table><thead><tr><th>Step</th><th>Intent Type</th><th>Status</th></tr></thead><tbody>';
+                
+                results.forEach((result) => {
+                    const step = result.step || 0;
+                    html += `<tr>
+                        <td>${step + 1}</td>
+                        <td>${result.operation}</td>
+                        <td class="cell-${this._statusClass(result.status)}">${(result.status || 'unknown').toUpperCase()}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                matrix.innerHTML = html;
+            }
+
+
+
+            async _loadTimeline() {
+                try {
+                    const res = await fetch(`${this.API}/timeline`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    this._timeline = data.events || [];
+                    if (this._timeline.length === 0) {
+                        this._showEmpty('timeline');
+                        return;
+                    }
+                    this._show('timeline');
+                    const container = document.getElementById('timeline-events');
+                    container.innerHTML = this._timeline.slice(0, 20).map(evt => {
+                        // Always show backend message as-is - no hardcoding or filtering
+                        const displayMessage = evt.message || evt.stage || 'Event recorded';
+                        
+                        return `
+                            <div class="timeline-event">
+                                <div class="timeline-dot ${evt.severity || evt.status}"></div>
+                                <div class="timeline-body">
+                                    <div class="timeline-meta">
+                                        <span class="timeline-ts">${new Date(evt.timestamp).toLocaleTimeString()}</span>
+                                        <span class="timeline-task">${evt.sctask || evt.task_number || '—'}</span>
+                                    </div>
+                                    <div class="timeline-message">${displayMessage}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } catch (err) {
+                    console.error('[Dashboard] _loadTimeline failed:', err);
+                    this._showEmpty('timeline');
+                }
+            }
+
+            async _loadMetrics() {
+                try {
+                    const res = await fetch(`${this.API}/metrics`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    this._metrics = data;
+                    this._show('metrics');
+                    this._setText('metric-total', data.total_tasks || 0);
+                    this._setText('metric-successful', data.successful_tasks || 0);
+                    this._setText('metric-failed', data.failed_tasks || 0);
+                } catch (err) {
+                    console.error('[Dashboard] _loadMetrics failed:', err);
+                }
+            }
+
+            _extractDevices(details) {
+                const devices = [];
+                const deviceData = details?.device_data || {};
+                if (deviceData.device_name) {
+                    devices.push({
+                        name: deviceData.device_name,
+                        vendor: deviceData.vendor || '—',
+                        os: deviceData.os_type || '—',
+                        host: deviceData.management_host || '—'
+                    });
+                }
+                return devices;
+            }
+
+            _show(section) {
+                const loading = document.getElementById(`${section}-loading`);
+                const empty = document.getElementById(`${section}-empty`);
+                const content = document.getElementById(`${section}-content`);
+                if (loading) loading.style.display = 'none';
+                if (empty) empty.style.display = 'none';
+                if (content) content.style.display = 'block';
+            }
+
+            _showEmpty(section) {
+                const loading = document.getElementById(`${section}-loading`);
+                const empty = document.getElementById(`${section}-empty`);
+                const content = document.getElementById(`${section}-content`);
+                if (loading) loading.style.display = 'none';
+                if (empty) empty.style.display = 'block';
+                if (content) content.style.display = 'none';
+            }
+
+            _setText(id, text) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = String(text || '—');
+            }
+
+            _statusClass(status) {
+                const s = (status || '').toLowerCase();
+                if (s === 'success' || s === 'completed') return 'success';
+                if (s === 'failed' || s === 'error') return 'failed';
+                if (s === 'pending' || s === 'waiting') return 'pending';
+                return 'info';
+            }
+        }
+
+        // Initialize dashboard on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            new Dashboard();
+        });
+    </script>
